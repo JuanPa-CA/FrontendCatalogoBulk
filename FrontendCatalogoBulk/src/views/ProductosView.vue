@@ -1,6 +1,6 @@
 <script setup>
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
 import TablaDatos from "@/components/Tables/TablaDatos.vue";
@@ -118,6 +118,32 @@ const cargar = async () => {
 };
 
 onMounted(cargar);
+
+// Esqueleto de carga: solo aparece si tarda mas de 300ms, para no
+// generar parpadeo en cargas rapidas.
+const mostrarEsqueleto = ref(false);
+const anchosEsqueleto = ["85%", "60%", "70%", "45%", "75%", "65%", "55%", "70%"];
+const anchoEsqueleto = (indice) => anchosEsqueleto[indice % anchosEsqueleto.length];
+let temporizadorCarga = null;
+
+watch(
+  cargando,
+  (valor) => {
+    if (valor) {
+      temporizadorCarga = setTimeout(() => {
+        mostrarEsqueleto.value = true;
+      }, 300);
+    } else {
+      if (temporizadorCarga) clearTimeout(temporizadorCarga);
+      mostrarEsqueleto.value = false;
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  if (temporizadorCarga) clearTimeout(temporizadorCarga);
+});
 
 
 const dialogo = ref(false);
@@ -246,152 +272,211 @@ const eliminar = async (producto) => {
         </template>
       </q-banner>
 
-      <TablaDatos
-        :filas="productos"
-        :columnas="columnas"
-        :cargando="cargando"
-        mensaje-vacio="Aun no hay productos registrados"
-      >
-        <template #body-cell-disponible="celda">
-          <q-td :props="celda" class="text-center">
-            <q-badge
-              :color="celda.row.disponible ? 'positive' : 'grey-6'"
-              :label="celda.row.disponible ? 'Disponible' : 'Agotado'"
-            />
-          </q-td>
-        </template>
+      <transition name="fade-esqueleto" mode="out-in">
+        <div v-if="mostrarEsqueleto" key="esqueleto" class="esqueleto-tabla">
+          <q-card flat bordered class="rounded-borders-lg">
+            <q-card-section>
+              <q-skeleton type="QInput" class="esqueleto-buscador" />
+            </q-card-section>
 
-        <template #body-cell-acciones="celda">
-          <q-td :props="celda" class="text-right">
-            <q-btn
-              flat dense round size="sm" icon="edit" color="primary"
-              class="action-secondary"
-              @click="abrirEdicion(celda.row)"
-            >
-              <q-tooltip>Editar</q-tooltip>
-            </q-btn>
+            <q-separator />
 
-            <q-btn
-              flat dense round size="sm" icon="delete" color="negative"
-              class="action-secondary"
-              @click="eliminar(celda.row)"
+            <div class="esqueleto-encabezado q-px-md q-py-sm">
+              <span
+                v-for="columna in columnas"
+                :key="columna.name"
+                class="esqueleto-col text-caption text-weight-bold text-grey-7"
+              >
+                {{ columna.label }}
+              </span>
+            </div>
+
+            <q-separator />
+
+            <div
+              v-for="fila in 5"
+              :key="fila"
+              class="esqueleto-fila q-px-md q-py-md"
             >
-              <q-tooltip>Eliminar</q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-      </TablaDatos>
+              <q-skeleton
+                v-for="(columna, indice) in columnas"
+                :key="columna.name"
+                type="text"
+                animation="wave"
+                class="esqueleto-col"
+                :width="anchoEsqueleto(indice)"
+              />
+            </div>
+          </q-card>
+        </div>
+
+        <TablaDatos
+          v-else
+          key="tabla"
+          :filas="productos"
+          :columnas="columnas"
+          :cargando="cargando"
+          mensaje-vacio="Aun no hay productos registrados"
+          class="tabla-productos"
+        >
+          <template #body-cell-disponible="celda">
+            <q-td :props="celda" class="text-center">
+              <q-badge
+                class="insignia-disponible"
+                :color="celda.row.disponible ? 'positive' : 'grey-6'"
+                :label="celda.row.disponible ? 'Disponible' : 'Agotado'"
+              />
+            </q-td>
+          </template>
+
+          <template #body-cell-acciones="celda">
+            <q-td :props="celda" class="text-right">
+              <q-btn
+                flat round size="md" icon="edit" color="primary"
+                class="action-secondary q-mr-xs"
+                @click="abrirEdicion(celda.row)"
+              >
+                <q-tooltip>Editar</q-tooltip>
+              </q-btn>
+
+              <q-btn
+                flat round size="md" icon="delete" color="negative"
+                class="action-secondary"
+                @click="eliminar(celda.row)"
+              >
+                <q-tooltip>Eliminar</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </TablaDatos>
+      </transition>
     </div>
 
     <q-dialog v-model="dialogo" persistent @show="formularioRef?.resetValidation()">
-      <q-card class="dialog-card dialog-card--ancho">
-        <q-card-section class="bg-primary text-white row items-center no-wrap q-px-lg q-py-md">
-          <q-icon :name="esEdicion ? 'edit' : 'add'" size="28px" class="q-mr-md" />
+      <q-card class="dialog-card dialog-card--ancho modal-producto">
+        <q-card-section class="cabecera-modal row items-center no-wrap">
+          <div class="icono-cabecera">
+            <q-icon :name="esEdicion ? 'edit' : 'add'" size="22px" />
+          </div>
 
-          <div>
+          <div class="q-ml-md">
             <div class="dialog-title">{{ esEdicion ? "Editar producto" : "Nuevo producto" }}</div>
-            <div class="text-caption text-green-2">Inventario del catalogo</div>
+            <div class="text-caption texto-cabecera">Inventario del catalogo</div>
           </div>
 
           <q-space />
-          <q-btn v-close-popup flat round dense icon="close" color="white" />
+          <q-btn v-close-popup flat round dense icon="close" color="white" class="boton-cerrar" />
         </q-card-section>
 
         <q-form ref="formularioRef" greedy @submit="guardar">
-          <q-card-section class="q-gutter-md">
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model="formulario.sku"
-                  outlined dense label="SKU *"
-                  hint="Identificador unico del producto"
-                  :rules="[requerido('El SKU'), minimo(2, 'El SKU')]"
-                  lazy-rules
-                />
+          <q-card-section class="cuerpo-modal q-gutter-y-lg">
+            <div>
+              <div class="etiqueta-grupo">Identificacion</div>
+              <div class="row q-col-gutter-md">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model="formulario.sku"
+                    outlined label="SKU *"
+                    hint="Identificador unico del producto"
+                    :rules="[requerido('El SKU'), minimo(2, 'El SKU')]"
+                    lazy-rules
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model="formulario.nombre"
+                    outlined label="Nombre *"
+                    :rules="[requerido('El nombre'), minimo(1, 'El nombre')]"
+                    lazy-rules
+                  />
+                </div>
               </div>
-              <div class="col-12 col-sm-6">
+            </div>
+
+            <div>
+              <div class="etiqueta-grupo">Precio e inventario</div>
+              <div class="row q-col-gutter-md">
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="formulario.precio"
+                    outlined type="number" label="Precio *" step="0.01"
+                    :rules="[requerido('El precio'), mayorIgualA(0, 'El precio')]"
+                    lazy-rules
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input
+                    v-model.number="formulario.stock"
+                    outlined type="number" label="Stock *"
+                    :rules="[enteroMayorIgualA(0, 'El stock')]"
+                    lazy-rules
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="etiqueta-grupo">Clasificacion</div>
+              <div class="row q-col-gutter-md">
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    v-model="formulario.categoria"
+                    outlined emit-value map-options label="Categoria *"
+                    :options="opcionesCategorias"
+                    :rules="[seleccionRequerida('una categoria')]"
+                    lazy-rules
+                  >
+                    <template #no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">
+                          No hay categorias disponibles
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    v-model="formulario.proveedorId"
+                    outlined emit-value map-options label="Proveedor *"
+                    :options="opcionesProveedores"
+                    :rules="[seleccionRequerida('un proveedor')]"
+                    lazy-rules
+                  >
+                    <template #no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">
+                          No hay proveedores disponibles
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="etiqueta-grupo">Informacion adicional</div>
+              <div class="q-gutter-y-md">
                 <q-input
-                  v-model="formulario.nombre"
-                  outlined dense label="Nombre *"
-                  :rules="[requerido('El nombre'), minimo(1, 'El nombre')]"
+                  v-model="formulario.descripcion"
+                  outlined type="textarea" label="Descripcion"
+                  hint="Opcional"
+                  autogrow
+                />
+
+                <q-input
+                  v-model="formulario.imagenUrl"
+                  outlined label="URL de la imagen"
+                  hint="Opcional. Ej: https://.../producto.jpg"
+                  :rules="[esUrl()]"
                   lazy-rules
                 />
               </div>
             </div>
-
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="formulario.precio"
-                  outlined dense type="number" label="Precio *" step="0.01"
-                  :rules="[requerido('El precio'), mayorIgualA(0, 'El precio')]"
-                  lazy-rules
-                />
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-input
-                  v-model.number="formulario.stock"
-                  outlined dense type="number" label="Stock *"
-                  :rules="[enteroMayorIgualA(0, 'El stock')]"
-                  lazy-rules
-                />
-              </div>
-            </div>
-
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-sm-6">
-                <q-select
-                  v-model="formulario.categoria"
-                  outlined dense emit-value map-options label="Categoria *"
-                  :options="opcionesCategorias"
-                  :rules="[seleccionRequerida('una categoria')]"
-                  lazy-rules
-                >
-                  <template #no-option>
-                    <q-item>
-                      <q-item-section class="text-grey">
-                        No hay categorias disponibles
-                      </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-select
-                  v-model="formulario.proveedorId"
-                  outlined dense emit-value map-options label="Proveedor *"
-                  :options="opcionesProveedores"
-                  :rules="[seleccionRequerida('un proveedor')]"
-                  lazy-rules
-                >
-                  <template #no-option>
-                    <q-item>
-                      <q-item-section class="text-grey">
-                        No hay proveedores disponibles
-                      </q-item-section>
-                    </q-item>
-                  </template>
-                </q-select>
-              </div>
-            </div>
-
-            <q-input
-              v-model="formulario.descripcion"
-              outlined dense type="textarea" label="Descripcion"
-              hint="Opcional"
-              autogrow
-            />
-
-            <q-input
-              v-model="formulario.imagenUrl"
-              outlined dense label="URL de la imagen"
-              hint="Opcional. Ej: https://.../producto.jpg"
-              :rules="[esUrl()]"
-              lazy-rules
-            />
           </q-card-section>
 
-          <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-card-actions align="right" class="pie-modal">
             <q-btn v-close-popup flat no-caps label="Cancelar" color="dark" class="btn-cancel" />
             <q-btn
               unelevated no-caps type="submit" color="primary" class="btn-ok"
@@ -404,3 +489,123 @@ const eliminar = async (producto) => {
     </q-dialog>
   </q-page>
 </template>
+
+<style scoped lang="scss">
+// La tabla vive dentro de TablaDatos (componente hijo), asi que ajustamos
+// su spacing/tipografia desde afuera con :deep() en vez de tocar ese componente.
+.tabla-productos {
+  :deep(th) {
+    font-size: 0.8rem;
+    padding: 14px 16px;
+  }
+
+  :deep(td) {
+    font-size: 0.92rem;
+    padding: 16px;
+  }
+
+  :deep(.q-table__card) {
+    border-radius: 12px;
+  }
+}
+
+.insignia-disponible {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.action-secondary {
+  font-size: 1.15rem;
+}
+
+// ---- Modal de producto ---------------------------------------------------
+
+.modal-producto {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.cabecera-modal {
+  background: linear-gradient(120deg, var(--q-primary) 0%, #1f5c22 100%);
+  color: white;
+  padding: 20px 24px;
+}
+
+.icono-cabecera {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.texto-cabecera {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.boton-cerrar {
+  opacity: 0.85;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.cuerpo-modal {
+  padding: 24px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.etiqueta-grupo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--q-primary);
+  margin-bottom: 10px;
+}
+
+.pie-modal {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+// ---- Esqueleto de carga --------------------------------------------------
+
+.rounded-borders-lg {
+  border-radius: 12px;
+}
+
+.esqueleto-buscador {
+  height: 40px;
+  max-width: 320px;
+  border-radius: 8px;
+}
+
+.esqueleto-encabezado,
+.esqueleto-fila {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.esqueleto-col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.fade-esqueleto-enter-active,
+.fade-esqueleto-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-esqueleto-enter-from,
+.fade-esqueleto-leave-to {
+  opacity: 0;
+}
+</style>

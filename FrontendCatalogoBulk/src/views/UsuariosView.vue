@@ -1,6 +1,6 @@
 <script setup>
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
 import TablaDatos from "@/components/Tables/TablaDatos.vue";
@@ -49,6 +49,32 @@ const cargar = async () => {
 };
 
 onMounted(cargar);
+
+// Esqueleto de carga: solo aparece si tarda mas de 300ms, para no
+// generar parpadeo en cargas rapidas.
+const mostrarEsqueleto = ref(false);
+const anchosEsqueleto = ["75%", "45%", "45%", "60%"];
+const anchoEsqueleto = (indice) => anchosEsqueleto[indice % anchosEsqueleto.length];
+let temporizadorCarga = null;
+
+watch(
+  cargando,
+  (valor) => {
+    if (valor) {
+      temporizadorCarga = setTimeout(() => {
+        mostrarEsqueleto.value = true;
+      }, 300);
+    } else {
+      if (temporizadorCarga) clearTimeout(temporizadorCarga);
+      mostrarEsqueleto.value = false;
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  if (temporizadorCarga) clearTimeout(temporizadorCarga);
+});
 
 
 const dialogo = ref(false);
@@ -163,104 +189,158 @@ const cambiarEstado = async (usuario) => {
         </template>
       </q-banner>
 
-      <TablaDatos
-        :filas="usuarios"
-        :columnas="columnas"
-        :cargando="cargando"
-        mensaje-vacio="Aun no hay usuarios registrados"
-      >
-        <template #body-cell-rol="celda">
-          <q-td :props="celda" class="text-center">
-            <q-badge
-              :color="celda.row.rol === 'admin' ? 'primary' : 'grey-7'"
-              :label="celda.row.rol === 'admin' ? 'Admin' : 'Usuario'"
-            />
-          </q-td>
-        </template>
+      <transition name="fade-esqueleto" mode="out-in">
+        <div v-if="mostrarEsqueleto" key="esqueleto" class="esqueleto-tabla">
+          <q-card flat bordered class="rounded-borders-lg">
+            <q-card-section>
+              <q-skeleton type="QInput" class="esqueleto-buscador" />
+            </q-card-section>
 
-        <template #body-cell-activo="celda">
-          <q-td :props="celda" class="text-center">
-            <q-badge
-              :color="celda.row.activo !== false ? 'positive' : 'grey-6'"
-              :label="celda.row.activo !== false ? 'Activo' : 'Inactivo'"
-            />
-          </q-td>
-        </template>
+            <q-separator />
 
-        <template #body-cell-acciones="celda">
-          <q-td :props="celda" class="text-right">
-            <q-btn
-              flat dense round size="sm" icon="edit" color="primary"
-              class="action-secondary"
-              @click="abrirEdicion(celda.row)"
+            <div class="esqueleto-encabezado q-px-md q-py-sm">
+              <span
+                v-for="columna in columnas"
+                :key="columna.name"
+                class="esqueleto-col text-caption text-weight-bold text-grey-7"
+              >
+                {{ columna.label }}
+              </span>
+            </div>
+
+            <q-separator />
+
+            <div
+              v-for="fila in 5"
+              :key="fila"
+              class="esqueleto-fila q-px-md q-py-md"
             >
-              <q-tooltip>Editar</q-tooltip>
-            </q-btn>
+              <q-skeleton
+                v-for="(columna, indice) in columnas"
+                :key="columna.name"
+                type="text"
+                animation="wave"
+                class="esqueleto-col"
+                :width="anchoEsqueleto(indice)"
+              />
+            </div>
+          </q-card>
+        </div>
 
-            <q-btn
-              flat dense round size="sm" class="action-secondary"
-              :icon="celda.row.activo !== false ? 'toggle_on' : 'toggle_off'"
-              :color="celda.row.activo !== false ? 'negative' : 'positive'"
-              @click="cambiarEstado(celda.row)"
-            >
-              <q-tooltip>
-                {{ celda.row.activo !== false ? "Desactivar" : "Activar" }}
-              </q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-      </TablaDatos>
+        <TablaDatos
+          v-else
+          key="tabla"
+          :filas="usuarios"
+          :columnas="columnas"
+          :cargando="cargando"
+          mensaje-vacio="Aun no hay usuarios registrados"
+          class="tabla-usuarios"
+        >
+          <template #body-cell-rol="celda">
+            <q-td :props="celda" class="text-center">
+              <q-badge
+                class="insignia-rol"
+                :color="celda.row.rol === 'admin' ? 'primary' : 'grey-7'"
+                :label="celda.row.rol === 'admin' ? 'Admin' : 'Usuario'"
+              />
+            </q-td>
+          </template>
+
+          <template #body-cell-activo="celda">
+            <q-td :props="celda" class="text-center">
+              <q-badge
+                class="insignia-estado"
+                :color="celda.row.activo !== false ? 'positive' : 'grey-6'"
+                :label="celda.row.activo !== false ? 'Activo' : 'Inactivo'"
+              />
+            </q-td>
+          </template>
+
+          <template #body-cell-acciones="celda">
+            <q-td :props="celda" class="text-right">
+              <q-btn
+                flat round size="md" icon="edit" color="primary"
+                class="action-secondary q-mr-xs"
+                @click="abrirEdicion(celda.row)"
+              >
+                <q-tooltip>Editar</q-tooltip>
+              </q-btn>
+
+              <q-btn
+                flat round size="md" class="action-secondary"
+                :icon="celda.row.activo !== false ? 'toggle_on' : 'toggle_off'"
+                :color="celda.row.activo !== false ? 'negative' : 'positive'"
+                @click="cambiarEstado(celda.row)"
+              >
+                <q-tooltip>
+                  {{ celda.row.activo !== false ? "Desactivar" : "Activar" }}
+                </q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </TablaDatos>
+      </transition>
     </div>
 
     <q-dialog v-model="dialogo" persistent @show="formularioRef?.resetValidation()">
-      <q-card class="dialog-card">
-        <q-card-section class="bg-primary text-white row items-center no-wrap q-px-lg q-py-md">
-          <q-icon :name="esEdicion ? 'edit' : 'add'" size="28px" class="q-mr-md" />
+      <q-card class="dialog-card modal-usuario">
+        <q-card-section class="cabecera-modal row items-center no-wrap">
+          <div class="icono-cabecera">
+            <q-icon :name="esEdicion ? 'edit' : 'add'" size="22px" />
+          </div>
 
-          <div>
+          <div class="q-ml-md">
             <div class="dialog-title">{{ esEdicion ? "Editar usuario" : "Nuevo usuario" }}</div>
-            <div class="text-caption text-green-2">Cuentas de acceso</div>
+            <div class="text-caption texto-cabecera">Cuentas de acceso</div>
           </div>
 
           <q-space />
-          <q-btn v-close-popup flat round dense icon="close" color="white" />
+          <q-btn v-close-popup flat round dense icon="close" color="white" class="boton-cerrar" />
         </q-card-section>
 
         <q-form ref="formularioRef" greedy @submit="guardar">
-          <q-card-section class="q-gutter-md">
-            <q-input
-              v-model="formulario.email"
-              outlined dense type="email" label="Email *"
-              :rules="[requerido('El email'), esEmail()]"
-              lazy-rules
-            >
-              <template #prepend>
-                <q-icon name="mail" />
-              </template>
-            </q-input>
+          <q-card-section class="cuerpo-modal q-gutter-y-lg">
+            <div>
+              <div class="etiqueta-grupo">Credenciales</div>
+              <div class="q-gutter-y-md">
+                <q-input
+                  v-model="formulario.email"
+                  outlined type="email" label="Email *"
+                  :rules="[requerido('El email'), esEmail()]"
+                  lazy-rules
+                >
+                  <template #prepend>
+                    <q-icon name="mail" color="primary" />
+                  </template>
+                </q-input>
 
-            <q-input
-              v-model="formulario.password"
-              outlined dense
-              :label="esEdicion ? 'Contraseña (dejar vacia para no cambiar)' : 'Contraseña *'"
-              :type="'password'"
-              autocomplete="new-password"
-              :rules="reglasPassword"
-              lazy-rules
-            >
-              <template #prepend>
-                <q-icon name="lock" />
-              </template>
-            </q-input>
+                <q-input
+                  v-model="formulario.password"
+                  outlined
+                  :label="esEdicion ? 'Contraseña (dejar vacia para no cambiar)' : 'Contraseña *'"
+                  :type="'password'"
+                  autocomplete="new-password"
+                  :rules="reglasPassword"
+                  lazy-rules
+                >
+                  <template #prepend>
+                    <q-icon name="lock" color="primary" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
 
-            <q-select
-              v-model="formulario.rol"
-              outlined dense emit-value map-options label="Rol *"
-              :options="opcionesRol"
-            />
+            <div>
+              <div class="etiqueta-grupo">Permisos</div>
+              <q-select
+                v-model="formulario.rol"
+                outlined emit-value map-options label="Rol *"
+                :options="opcionesRol"
+              />
+            </div>
           </q-card-section>
 
-          <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-card-actions align="right" class="pie-modal">
             <q-btn v-close-popup flat no-caps label="Cancelar" color="dark" class="btn-cancel" />
             <q-btn
               unelevated no-caps type="submit" color="primary" class="btn-ok"
@@ -273,3 +353,124 @@ const cambiarEstado = async (usuario) => {
     </q-dialog>
   </q-page>
 </template>
+
+<style scoped lang="scss">
+// La tabla vive dentro de TablaDatos (componente hijo), asi que ajustamos
+// su spacing/tipografia desde afuera con :deep() en vez de tocar ese componente.
+.tabla-usuarios {
+  :deep(th) {
+    font-size: 0.8rem;
+    padding: 14px 16px;
+  }
+
+  :deep(td) {
+    font-size: 0.92rem;
+    padding: 16px;
+  }
+
+  :deep(.q-table__card) {
+    border-radius: 12px;
+  }
+}
+
+.insignia-rol,
+.insignia-estado {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.action-secondary {
+  font-size: 1.15rem;
+}
+
+// ---- Modal de usuario ---------------------------------------------------
+
+.modal-usuario {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.cabecera-modal {
+  background: linear-gradient(120deg, var(--q-primary) 0%, #1f5c22 100%);
+  color: white;
+  padding: 20px 24px;
+}
+
+.icono-cabecera {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.texto-cabecera {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.boton-cerrar {
+  opacity: 0.85;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.cuerpo-modal {
+  padding: 24px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.etiqueta-grupo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--q-primary);
+  margin-bottom: 10px;
+}
+
+.pie-modal {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+// ---- Esqueleto de carga --------------------------------------------------
+
+.rounded-borders-lg {
+  border-radius: 12px;
+}
+
+.esqueleto-buscador {
+  height: 40px;
+  max-width: 320px;
+  border-radius: 8px;
+}
+
+.esqueleto-encabezado,
+.esqueleto-fila {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.esqueleto-col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.fade-esqueleto-enter-active,
+.fade-esqueleto-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-esqueleto-enter-from,
+.fade-esqueleto-leave-to {
+  opacity: 0;
+}
+</style>

@@ -1,6 +1,6 @@
 <script setup>
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import ProductoCard from "@/components/Productos/ProductoCard.vue";
 
@@ -53,6 +53,10 @@ const productosFiltrados = computed(() => {
   });
 });
 
+const hayFiltrosActivos = computed(
+  () => Boolean(termino.value) || categoriaFiltro.value !== null || proveedorFiltro.value !== null
+);
+
 const limpiarFiltros = () => {
   termino.value = "";
   categoriaFiltro.value = null;
@@ -84,31 +88,56 @@ const cargar = async () => {
 };
 
 onMounted(cargar);
+
+// Esqueleto de carga: solo aparece si tarda mas de 300ms, para no
+// generar parpadeo en cargas rapidas.
+const mostrarEsqueleto = ref(false);
+let temporizadorCarga = null;
+
+watch(
+  cargando,
+  (valor) => {
+    if (valor) {
+      temporizadorCarga = setTimeout(() => {
+        mostrarEsqueleto.value = true;
+      }, 300);
+    } else {
+      if (temporizadorCarga) clearTimeout(temporizadorCarga);
+      mostrarEsqueleto.value = false;
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  if (temporizadorCarga) clearTimeout(temporizadorCarga);
+});
 </script>
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-page-container>
+    <q-page-container class="fondo-catalogo">
       <q-page>
-        <div class="contenedor-app">
-          <header class="catalogo-encabezado q-mb-md row items-start justify-between">
-  <div>
-    <h1 class="titulo-vista style-text">Catalogo</h1>
-    <p class="texto-suave q-mb-none">Explora los productos disponibles</p>
-  </div>
+        <!-- Decoraciones de fondo, mismo lenguaje visual del login -->
+        <div class="blob blob--uno bg-primary"></div>
+        <div class="blob blob--dos bg-primary"></div>
+        <div class="patron-puntos"></div>
 
-  <q-btn
-    outline
-    no-caps
-    icon="login"
-    label="Iniciar sesion"
-    color="primary"
-    :to="{ name: 'login' }"
-  />
+        <div class="contenedor-app relative-position">
+          <header class="encabezado-catalogo row items-start justify-between no-wrap">
+            <div class="row items-center no-wrap">
+              <div class="marco-icono-titulo">
+                <q-icon name="storefront" size="26px" color="white" />
+              </div>
+              <div class="q-ml-md">
+                <h1 class="titulo-vista style-text q-my-none">Catalogo</h1>
+                <p class="texto-suave q-mb-none">Explora los productos disponibles</p>
+              </div>
+            </div>
+          </header>
 
-  <hr class="linea-titulo" />
-</header>
+          <div class="linea-titulo"></div>
 
-          <q-banner v-if="error" dense class="bg-red-1 text-negative q-mb-md rounded-borders">
+          <q-banner v-if="error" dense class="bg-red-1 text-negative q-my-md rounded-borders">
             <template #avatar>
               <q-icon name="error_outline" />
             </template>
@@ -118,13 +147,14 @@ onMounted(cargar);
             </template>
           </q-banner>
 
-          <div class="row q-col-gutter-lg">
+          <div class="row q-col-gutter-lg q-mt-sm">
             <!-- Filtros laterales -->
             <div class="col-12 col-md-3">
-              <q-card flat class="tarjeta q-pa-md">
+              <q-card flat bordered class="tarjeta-filtros q-pa-md">
                 <div class="row items-center justify-between q-mb-md">
                   <div class="text-subtitle1 text-weight-bold">Filtros</div>
                   <q-btn
+                    v-if="hayFiltrosActivos"
                     flat dense size="sm" no-caps icon="filter_alt_off" color="primary"
                     label="Limpiar"
                     @click="limpiarFiltros"
@@ -135,79 +165,120 @@ onMounted(cargar);
                   v-model="termino"
                   outlined dense clearable label="Buscar por nombre"
                   debounce="200"
-                  class="q-mb-md"
+                  class="q-mb-lg campo-busqueda"
                 >
                   <template #prepend>
-                    <q-icon name="search" />
+                    <q-icon name="search" color="primary" />
                   </template>
                 </q-input>
 
-                <div class="data-label">Categoria</div>
-                <q-list dense class="q-mb-md">
-                  <q-item
-                    clickable v-ripple :active="categoriaFiltro === null" active-class="text-primary"
-                    @click="categoriaFiltro = null"
-                  >
-                    <q-item-section>Todas</q-item-section>
-                  </q-item>
-                  <q-item
-                    v-for="cat in categorias"
-                    :key="cat._id"
-                    clickable v-ripple
-                    :active="categoriaFiltro === cat.slug"
-                    active-class="text-primary"
-                    @click="categoriaFiltro = cat.slug"
-                  >
-                    <q-item-section>{{ cat.nombre }}</q-item-section>
-                  </q-item>
-                </q-list>
+                <div class="grupo-filtro q-mb-lg">
+                  <div class="etiqueta-filtro row items-center">
+                    <q-icon name="category" size="16px" class="q-mr-xs" />
+                    Categoria
+                  </div>
+                  <q-list class="q-mt-xs">
+                    <q-item
+                      clickable v-ripple
+                      class="opcion-filtro rounded-borders"
+                      :class="{ 'opcion-filtro--activa': categoriaFiltro === null }"
+                      @click="categoriaFiltro = null"
+                    >
+                      <q-item-section>Todas</q-item-section>
+                    </q-item>
+                    <q-item
+                      v-for="cat in categorias"
+                      :key="cat._id"
+                      clickable v-ripple
+                      class="opcion-filtro rounded-borders"
+                      :class="{ 'opcion-filtro--activa': categoriaFiltro === cat.slug }"
+                      @click="categoriaFiltro = cat.slug"
+                    >
+                      <q-item-section>{{ cat.nombre }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </div>
 
-                <div class="data-label">Proveedor</div>
-                <q-list dense>
-                  <q-item
-                    clickable v-ripple :active="proveedorFiltro === null" active-class="text-primary"
-                    @click="proveedorFiltro = null"
-                  >
-                    <q-item-section>Todos</q-item-section>
-                  </q-item>
-                  <q-item
-                    v-for="prov in proveedores"
-                    :key="prov._id"
-                    clickable v-ripple
-                    :active="proveedorFiltro === prov._id"
-                    active-class="text-primary"
-                    @click="proveedorFiltro = prov._id"
-                  >
-                    <q-item-section>{{ prov.nombre }}</q-item-section>
-                  </q-item>
-                </q-list>
+                <div class="grupo-filtro">
+                  <div class="etiqueta-filtro row items-center">
+                    <q-icon name="local_shipping" size="16px" class="q-mr-xs" />
+                    Proveedor
+                  </div>
+                  <q-list class="q-mt-xs">
+                    <q-item
+                      clickable v-ripple
+                      class="opcion-filtro rounded-borders"
+                      :class="{ 'opcion-filtro--activa': proveedorFiltro === null }"
+                      @click="proveedorFiltro = null"
+                    >
+                      <q-item-section>Todos</q-item-section>
+                    </q-item>
+                    <q-item
+                      v-for="prov in proveedores"
+                      :key="prov._id"
+                      clickable v-ripple
+                      class="opcion-filtro rounded-borders"
+                      :class="{ 'opcion-filtro--activa': proveedorFiltro === prov._id }"
+                      @click="proveedorFiltro = prov._id"
+                    >
+                      <q-item-section>{{ prov.nombre }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </div>
               </q-card>
             </div>
 
             <!-- Grid de productos -->
             <div class="col-12 col-md-9">
-              <div v-if="cargando" class="row justify-center q-py-xl">
-                <q-spinner color="primary" size="3em" />
-              </div>
+              <transition name="fade-esqueleto" mode="out-in">
+                <!-- Esqueleto de carga -->
+                <div v-if="mostrarEsqueleto" key="esqueleto" class="row q-col-gutter-md">
+                  <div v-for="n in 6" :key="n" class="col-12 col-sm-6 col-lg-4">
+                    <q-card flat bordered class="esqueleto-card">
+                      <q-skeleton type="rect" height="160px" animation="wave" />
+                      <q-card-section>
+                        <q-skeleton type="text" width="80%" animation="wave" class="q-mb-sm" />
+                        <q-skeleton type="text" width="40%" animation="wave" class="q-mb-md" />
+                        <q-skeleton type="text" width="60%" animation="wave" class="q-mb-xs" />
+                        <q-skeleton type="text" width="55%" animation="wave" />
+                      </q-card-section>
+                    </q-card>
+                  </div>
+                </div>
 
-              <div v-else-if="productosFiltrados.length === 0" class="column flex-center q-py-xl">
-                <q-icon name="inbox" size="64px" color="grey-4" class="q-mb-sm" />
-                <span class="empty-title">No hay productos que coincidan con los filtros</span>
-              </div>
-
-              <div v-else class="row q-col-gutter-md">
+                <!-- Estado vacio -->
                 <div
-                  v-for="producto in productosFiltrados"
-                  :key="producto._id"
-                  class="col-12 col-sm-6 col-lg-4"
+                  v-else-if="productosFiltrados.length === 0"
+                  key="vacio"
+                  class="column flex-center q-py-xl estado-vacio"
                 >
-                  <ProductoCard
-                    :producto="producto"
-                    :categoria-nombre="categoriaNombre(producto.categoria)"
-                    :proveedor-nombre="proveedorNombre(producto.proveedorId)"
+                  <q-icon name="inbox" size="64px" color="grey-4" class="q-mb-sm" />
+                  <span class="empty-title">No hay productos que coincidan con los filtros</span>
+                  <q-btn
+                    v-if="hayFiltrosActivos"
+                    flat no-caps color="primary" label="Limpiar filtros" class="q-mt-sm"
+                    @click="limpiarFiltros"
                   />
                 </div>
-              </div>
+
+                <!-- Grid real -->
+                <div v-else key="grid" class="row q-col-gutter-md">
+                  <div
+                    v-for="(producto, indice) in productosFiltrados"
+                    :key="producto._id"
+                    class="col-12 col-sm-6 col-lg-4 producto-animado"
+                    :style="{ animationDelay: `${Math.min(indice, 8) * 50}ms` }"
+                  >
+                    <div class="producto-envoltorio">
+                      <ProductoCard
+                        :producto="producto"
+                        :categoria-nombre="categoriaNombre(producto.categoria)"
+                        :proveedor-nombre="proveedorNombre(producto.proveedorId)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </transition>
             </div>
           </div>
         </div>
@@ -216,7 +287,168 @@ onMounted(cargar);
   </q-layout>
 </template>
 <style scoped lang="scss">
-.catalogo-encabezado {
-  margin-bottom: 24px;
+.fondo-catalogo {
+  background: #f7f8f7;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+// ---- Decoraciones de fondo -------------------------------------------------
+
+.blob {
+  position: absolute;
+  border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
+  filter: blur(2px);
+  z-index: 0;
+  pointer-events: none;
+
+  &--uno {
+    width: 340px;
+    height: 340px;
+    top: -140px;
+    right: -140px;
+    opacity: 0.08;
+  }
+
+  &--dos {
+    width: 220px;
+    height: 220px;
+    bottom: -100px;
+    left: -90px;
+    opacity: 0.06;
+  }
+}
+
+.patron-puntos {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 220px;
+  height: 220px;
+  background-image: radial-gradient(var(--q-primary) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+  opacity: 0.08;
+  z-index: 0;
+  pointer-events: none;
+}
+
+// ---- Encabezado -------------------------------------------------------------
+
+.encabezado-catalogo {
+  padding-top: 8px;
+}
+
+.marco-icono-titulo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--q-primary) 0%, #1f5c22 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px -6px rgba(16, 40, 20, 0.35);
+}
+
+.linea-titulo {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--q-primary) 0%, rgba(33, 115, 40, 0.15) 100%);
+  margin-top: 16px;
+}
+
+// ---- Filtros -----------------------------------------------------------------
+
+.tarjeta-filtros {
+  border-radius: 14px;
+  position: sticky;
+  top: 16px;
+}
+
+.campo-busqueda :deep(.q-field__control) {
+  border-radius: 10px;
+}
+
+.etiqueta-filtro {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--q-primary);
+}
+
+.opcion-filtro {
+  min-height: 36px;
+  color: rgba(0, 0, 0, 0.72);
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    background-color: rgba(var(--q-primary-rgb, 33, 115, 40), 0.06);
+    transform: translateX(2px);
+  }
+
+  &--activa {
+    background-color: rgba(var(--q-primary-rgb, 33, 115, 40), 0.1);
+    color: var(--q-primary);
+    font-weight: 600;
+    border-left: 3px solid var(--q-primary);
+    padding-left: calc(16px - 3px);
+  }
+}
+
+// ---- Grid de productos ---------------------------------------------------
+
+.producto-envoltorio {
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+  }
+}
+
+.producto-animado {
+  opacity: 0;
+  animation: entrar-producto 0.35s ease forwards;
+}
+
+@keyframes entrar-producto {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .producto-animado {
+    animation: none;
+    opacity: 1;
+  }
+  .producto-envoltorio:hover {
+    transform: none;
+  }
+}
+
+.esqueleto-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.estado-vacio {
+  min-height: 260px;
+}
+
+.fade-esqueleto-enter-active,
+.fade-esqueleto-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-esqueleto-enter-from,
+.fade-esqueleto-leave-to {
+  opacity: 0;
 }
 </style>
