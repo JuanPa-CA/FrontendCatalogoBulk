@@ -1,8 +1,5 @@
 <script setup>
-/**
- * COMPONENTE REUTILIZABLE — /components/Productos/ProductoCard.vue
- * Tarjeta de producto para el grid del catalogo (e-commerce).
- */
+
 import { computed } from "vue";
 import { formatMoneda } from "@/utils/formatMoneda";
 
@@ -31,7 +28,7 @@ const estaDisponible = computed(() => Boolean(props.producto.disponible));
         v-if="producto.imagenUrl"
         :src="producto.imagenUrl"
         :alt="producto.nombre"
-        ratio="4/3"
+        :ratio="4/3"
         class="full-width"
       />
       <div v-else class="producto-card__placeholder">

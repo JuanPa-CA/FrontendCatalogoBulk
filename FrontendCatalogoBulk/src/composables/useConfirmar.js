@@ -1,21 +1,9 @@
-/**
- * @fileoverview /composables/useConfirmar.js
- * Convierte el dialogo de Quasar en una Promesa, para poder escribir codigo
- * lineal: if (await confirmar({ ... })) { ...borrar... }
- */
+
 import { useQuasar } from "quasar";
 
 export function useConfirmar() {
   const $q = useQuasar();
 
-  /**
-   * @param {Object} opciones
-   * @param {string} opciones.titulo
-   * @param {string} opciones.mensaje
-   * @param {string} [opciones.textoOk="Confirmar"]
-   * @param {string} [opciones.color="primary"]
-   * @returns {Promise<boolean>}
-   */
   const confirmar = ({
     titulo,
     mensaje,

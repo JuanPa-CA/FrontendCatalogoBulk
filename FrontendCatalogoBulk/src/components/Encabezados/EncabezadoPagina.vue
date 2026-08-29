@@ -1,9 +1,5 @@
 <script setup>
-/**
- * COMPONENTE REUTILIZABLE — /components/Encabezados/EncabezadoPagina.vue
- * Encabezado estandar de cualquier pantalla: icono + titulo + subtitulo y un
- * espacio libre a la derecha para los botones de accion.
- */
+
 defineProps({
   titulo: {
     type: String,

@@ -1,8 +1,5 @@
 <script setup>
-/**
- * /views/NotFoundView.vue
- * Vista para la ruta comodin "/:pathMatch(.*)*".
- */
+
 </script>
 
 <template>

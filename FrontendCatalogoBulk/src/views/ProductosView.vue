@@ -1,20 +1,5 @@
 <script setup>
-/**
- * /views/ProductosView.vue
- * CRUD de productos. Campos: sku, nombre, precio, stock, categoria (slug),
- * descripcion, imagenUrl, proveedorId (ObjectId). "disponible" lo calcula el
- * backend (stock > 0), NO se manda en el body.
- *
- * Al listar: "categoria" viene como slug plano y "proveedorId" como ObjectId
- * plano (sin poblar), asi que aqui se resuelven contra las listas de categorias
- * y proveedores para mostrar nombres legibles.
- *
- * Endpoints:
- *   GET    /productos        listar (query: page, limit, categoria, proveedor, disponible)
- *   POST   /productos        crear
- *   PUT    /productos/:id    editar
- *   DELETE /productos/:id    borrar
- */
+
 import { computed, onMounted, ref } from "vue";
 
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
@@ -39,7 +24,7 @@ const general = useGeneralStore();
 const { notificarOk, notificarError } = useNotificar();
 const { confirmar } = useConfirmar();
 
-// --- Tabla ---------------------------------------------------------------
+
 const columnas = [
   { name: "sku", label: "SKU", field: "sku", align: "left", sortable: true },
   { name: "nombre", label: "Nombre", field: "nombre", align: "left", sortable: true },
@@ -70,14 +55,14 @@ const columnas = [
   { name: "acciones", label: "Acciones", field: "acciones", align: "right" },
 ];
 
-// --- Estado de la pantalla -----------------------------------------------
+
 const productos = ref([]);
 const categorias = ref([]);
 const proveedores = ref([]);
 const cargando = ref(false);
 const error = ref(null);
 
-/** Mapa _id -> nombre de proveedor, para resolver el proveedorId plano. */
+
 const mapaProveedores = computed(() => {
   const mapa = {};
   proveedores.value.forEach((p) => {
@@ -86,7 +71,7 @@ const mapaProveedores = computed(() => {
   return mapa;
 });
 
-/** Mapa slug -> nombre de categoria. */
+
 const mapaCategorias = computed(() => {
   const mapa = {};
   categorias.value.forEach((c) => {
@@ -98,12 +83,12 @@ const mapaCategorias = computed(() => {
 const proveedorNombre = (id) => mapaProveedores.value[id] || "Sin proveedor";
 const categoriaNombre = (slug) => mapaCategorias.value[slug] || slug || "Sin categoria";
 
-/** Opciones para el select de categoria: value = slug (dato final del backend). */
+
 const opcionesCategorias = computed(() =>
   categorias.value.map((c) => ({ label: c.nombre, value: c.slug }))
 );
 
-/** Opciones para el select de proveedor: value = _id (ObjectId). */
+
 const opcionesProveedores = computed(() =>
   proveedores.value.map((p) => ({ label: p.nombre, value: p._id }))
 );
@@ -134,7 +119,7 @@ const cargar = async () => {
 
 onMounted(cargar);
 
-// --- Formulario ----------------------------------------------------------
+
 const dialogo = ref(false);
 const guardando = ref(false);
 const productoEditando = ref(null);
@@ -189,7 +174,7 @@ const guardar = async () => {
   guardando.value = true;
 
   try {
-    // "disponible" NO se manda: lo calcula el backend a partir del stock.
+
     const datos = {
       sku: formulario.value.sku.trim(),
       nombre: formulario.value.nombre.trim(),

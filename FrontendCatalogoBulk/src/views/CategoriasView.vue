@@ -1,17 +1,5 @@
 <script setup>
-/**
- * /views/CategoriasView.vue
- * CRUD de categorias (solo lectura + edicion).
- *
- * Las categorias se crean solas (upsert) durante el import de productos, por eso
- * NO hay boton "nueva" ni endpoint POST/DELETE. Solo se listan y se editan
- * nombre, descripcion e imagenUrl (el slug NO se edita).
- *
- * Endpoints:
- *   GET /categorias        lista completa, sin paginar
- *   GET /categorias/:slug
- *   PUT /categorias/:id    editar
- */
+
 import { computed, onMounted, ref } from "vue";
 
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
@@ -56,7 +44,7 @@ const cargar = async () => {
 
 onMounted(cargar);
 
-// --- Formulario (solo edicion) ------------------------------------------
+
 const dialogo = ref(false);
 const guardando = ref(false);
 const categoriaEditando = ref(null);

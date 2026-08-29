@@ -1,14 +1,5 @@
 <script setup>
-/**
- * /views/ProveedoresView.vue
- * CRUD de proveedores. Campos: nombre, slug, contactoEmail, logoUrl, activo.
- *
- * Endpoints:
- *   GET    /proveedores        listar (query: page, limit, activo)
- *   POST   /proveedores        crear
- *   PUT    /proveedores/:id    editar
- *   DELETE /proveedores/:id    borrar (409 si tiene productos)
- */
+
 import { computed, onMounted, ref } from "vue";
 
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
@@ -56,7 +47,6 @@ const cargar = async () => {
 
 onMounted(cargar);
 
-// --- Formulario ----------------------------------------------------------
 const dialogo = ref(false);
 const guardando = ref(false);
 const proveedorEditando = ref(null);
@@ -110,7 +100,6 @@ const guardar = async () => {
   }
 };
 
-// --- Activar / desactivar y borrar --------------------------------------
 const cambiarEstado = async (proveedor) => {
   const activo = proveedor.activo !== false;
 
@@ -154,7 +143,7 @@ const eliminar = async (proveedor) => {
     notificarOk(respuesta.msg || "Proveedor eliminado");
     await cargar();
   } catch (e) {
-    // Un 409 llega cuando el proveedor tiene productos asociados.
+
     notificarError(e);
   }
 };

@@ -1,13 +1,5 @@
 <script setup>
-/**
- * /views/CatalogoView.vue
- * Vista tipo e-commerce: grid de productos con filtros laterales por categoria
- * y proveedor, y buscador por nombre.
- *
- * Los filtros se aplican en el cliente (sobre la lista ya cargada) para que la
- * respuesta sea instantanea al seleccionar. La API tambien acepta los query
- * categoria / proveedor / disponible si se quisiera filtrar del lado del servidor.
- */
+
 import { computed, onMounted, ref } from "vue";
 
 import ProductoCard from "@/components/Productos/ProductoCard.vue";
@@ -93,124 +85,136 @@ const cargar = async () => {
 
 onMounted(cargar);
 </script>
-
 <template>
-  <q-page>
-    <div class="contenedor-app">
-      <header class="catalogo-encabezado q-mb-md">
-        <div>
-          <h1 class="titulo-vista style-text">Catalogo</h1>
-          <p class="texto-suave q-mb-none">Explora los productos disponibles</p>
-        </div>
-        <hr class="linea-titulo" />
-      </header>
+  <q-layout view="lHh Lpr lFf">
+    <q-page-container>
+      <q-page>
+        <div class="contenedor-app">
+          <header class="catalogo-encabezado q-mb-md row items-start justify-between">
+  <div>
+    <h1 class="titulo-vista style-text">Catalogo</h1>
+    <p class="texto-suave q-mb-none">Explora los productos disponibles</p>
+  </div>
 
-      <q-banner v-if="error" dense class="bg-red-1 text-negative q-mb-md rounded-borders">
-        <template #avatar>
-          <q-icon name="error_outline" />
-        </template>
-        {{ error }}
-        <template #action>
-          <q-btn flat dense no-caps label="Reintentar" @click="cargar" />
-        </template>
-      </q-banner>
+  <q-btn
+    outline
+    no-caps
+    icon="login"
+    label="Iniciar sesion"
+    color="primary"
+    :to="{ name: 'login' }"
+  />
 
-      <div class="row q-col-gutter-lg">
-        <!-- Filtros laterales -->
-        <div class="col-12 col-md-3">
-          <q-card flat class="tarjeta q-pa-md">
-            <div class="row items-center justify-between q-mb-md">
-              <div class="text-subtitle1 text-weight-bold">Filtros</div>
-              <q-btn
-                flat dense size="sm" no-caps icon="filter_alt_off" color="primary"
-                label="Limpiar"
-                @click="limpiarFiltros"
-              />
+  <hr class="linea-titulo" />
+</header>
+
+          <q-banner v-if="error" dense class="bg-red-1 text-negative q-mb-md rounded-borders">
+            <template #avatar>
+              <q-icon name="error_outline" />
+            </template>
+            {{ error }}
+            <template #action>
+              <q-btn flat dense no-caps label="Reintentar" @click="cargar" />
+            </template>
+          </q-banner>
+
+          <div class="row q-col-gutter-lg">
+            <!-- Filtros laterales -->
+            <div class="col-12 col-md-3">
+              <q-card flat class="tarjeta q-pa-md">
+                <div class="row items-center justify-between q-mb-md">
+                  <div class="text-subtitle1 text-weight-bold">Filtros</div>
+                  <q-btn
+                    flat dense size="sm" no-caps icon="filter_alt_off" color="primary"
+                    label="Limpiar"
+                    @click="limpiarFiltros"
+                  />
+                </div>
+
+                <q-input
+                  v-model="termino"
+                  outlined dense clearable label="Buscar por nombre"
+                  debounce="200"
+                  class="q-mb-md"
+                >
+                  <template #prepend>
+                    <q-icon name="search" />
+                  </template>
+                </q-input>
+
+                <div class="data-label">Categoria</div>
+                <q-list dense class="q-mb-md">
+                  <q-item
+                    clickable v-ripple :active="categoriaFiltro === null" active-class="text-primary"
+                    @click="categoriaFiltro = null"
+                  >
+                    <q-item-section>Todas</q-item-section>
+                  </q-item>
+                  <q-item
+                    v-for="cat in categorias"
+                    :key="cat._id"
+                    clickable v-ripple
+                    :active="categoriaFiltro === cat.slug"
+                    active-class="text-primary"
+                    @click="categoriaFiltro = cat.slug"
+                  >
+                    <q-item-section>{{ cat.nombre }}</q-item-section>
+                  </q-item>
+                </q-list>
+
+                <div class="data-label">Proveedor</div>
+                <q-list dense>
+                  <q-item
+                    clickable v-ripple :active="proveedorFiltro === null" active-class="text-primary"
+                    @click="proveedorFiltro = null"
+                  >
+                    <q-item-section>Todos</q-item-section>
+                  </q-item>
+                  <q-item
+                    v-for="prov in proveedores"
+                    :key="prov._id"
+                    clickable v-ripple
+                    :active="proveedorFiltro === prov._id"
+                    active-class="text-primary"
+                    @click="proveedorFiltro = prov._id"
+                  >
+                    <q-item-section>{{ prov.nombre }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-card>
             </div>
 
-            <q-input
-              v-model="termino"
-              outlined dense clearable label="Buscar por nombre"
-              debounce="200"
-              class="q-mb-md"
-            >
-              <template #prepend>
-                <q-icon name="search" />
-              </template>
-            </q-input>
+            <!-- Grid de productos -->
+            <div class="col-12 col-md-9">
+              <div v-if="cargando" class="row justify-center q-py-xl">
+                <q-spinner color="primary" size="3em" />
+              </div>
 
-            <div class="data-label">Categoria</div>
-            <q-list dense class="q-mb-md">
-              <q-item
-                clickable v-ripple :active="categoriaFiltro === null" active-class="text-primary"
-                @click="categoriaFiltro = null"
-              >
-                <q-item-section>Todas</q-item-section>
-              </q-item>
-              <q-item
-                v-for="cat in categorias"
-                :key="cat._id"
-                clickable v-ripple
-                :active="categoriaFiltro === cat.slug"
-                active-class="text-primary"
-                @click="categoriaFiltro = cat.slug"
-              >
-                <q-item-section>{{ cat.nombre }}</q-item-section>
-              </q-item>
-            </q-list>
+              <div v-else-if="productosFiltrados.length === 0" class="column flex-center q-py-xl">
+                <q-icon name="inbox" size="64px" color="grey-4" class="q-mb-sm" />
+                <span class="empty-title">No hay productos que coincidan con los filtros</span>
+              </div>
 
-            <div class="data-label">Proveedor</div>
-            <q-list dense>
-              <q-item
-                clickable v-ripple :active="proveedorFiltro === null" active-class="text-primary"
-                @click="proveedorFiltro = null"
-              >
-                <q-item-section>Todos</q-item-section>
-              </q-item>
-              <q-item
-                v-for="prov in proveedores"
-                :key="prov._id"
-                clickable v-ripple
-                :active="proveedorFiltro === prov._id"
-                active-class="text-primary"
-                @click="proveedorFiltro = prov._id"
-              >
-                <q-item-section>{{ prov.nombre }}</q-item-section>
-              </q-item>
-            </q-list>
-          </q-card>
-        </div>
-
-        <!-- Grid de productos -->
-        <div class="col-12 col-md-9">
-          <div v-if="cargando" class="row justify-center q-py-xl">
-            <q-spinner color="primary" size="3em" />
-          </div>
-
-          <div v-else-if="productosFiltrados.length === 0" class="column flex-center q-py-xl">
-            <q-icon name="inbox" size="64px" color="grey-4" class="q-mb-sm" />
-            <span class="empty-title">No hay productos que coincidan con los filtros</span>
-          </div>
-
-          <div v-else class="row q-col-gutter-md">
-            <div
-              v-for="producto in productosFiltrados"
-              :key="producto._id"
-              class="col-12 col-sm-6 col-lg-4"
-            >
-              <ProductoCard
-                :producto="producto"
-                :categoria-nombre="categoriaNombre(producto.categoria)"
-                :proveedor-nombre="proveedorNombre(producto.proveedorId)"
-              />
+              <div v-else class="row q-col-gutter-md">
+                <div
+                  v-for="producto in productosFiltrados"
+                  :key="producto._id"
+                  class="col-12 col-sm-6 col-lg-4"
+                >
+                  <ProductoCard
+                    :producto="producto"
+                    :categoria-nombre="categoriaNombre(producto.categoria)"
+                    :proveedor-nombre="proveedorNombre(producto.proveedorId)"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </q-page>
+      </q-page>
+    </q-page-container>
+  </q-layout>
 </template>
-
 <style scoped lang="scss">
 .catalogo-encabezado {
   margin-bottom: 24px;

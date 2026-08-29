@@ -1,8 +1,4 @@
-/**
- * @fileoverview /composables/useNotificar.js
- * Centraliza como se le avisa al usuario, para que todas las pantallas muestren
- * los mensajes igual.
- */
+
 import { useQuasar } from "quasar";
 
 export function useNotificar() {
@@ -12,9 +8,7 @@ export function useNotificar() {
     $q.notify({ type: "positive", message: mensaje, icon: "check_circle" });
   };
 
-  /**
-   * @param {{mensaje: string, errores: string[]}|string} error
-   */
+
   const notificarError = (error) => {
     if (typeof error === "string") {
       $q.notify({ type: "negative", message: error, icon: "error" });

@@ -1,11 +1,4 @@
 <script setup>
-/**
- * /views/LoginView.vue
- * Pantalla de inicio de sesion. Es la RAIZ de la aplicacion ("/").
- *
- * El backend responde { token }; el store Auth lo guarda y decodifica el rol.
- * Esta pantalla NO va dentro de un layout, por eso usa un <div> y no <q-page>.
- */
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 
@@ -55,61 +48,39 @@ const iniciarSesion = async () => {
           <img :src="logo" alt="Logo" width="56" height="56" />
           <div class="text-h6 text-weight-bold q-mt-sm">{{ general.titulo }}</div>
           <p class="texto-suave text-body2">
-            Inicia sesion para acceder al catalogo.
+            Inicia sesion para acceder.
           </p>
+
         </q-card-section>
 
         <q-form greedy @submit="iniciarSesion">
           <q-card-section class="q-gutter-md">
-            <q-input
-              v-model="formulario.email"
-              outlined
-              dense
-              type="email"
-              label="Email *"
-              autocomplete="email"
-              autofocus
-              :rules="[requerido('El email'), esEmail()]"
-              lazy-rules
-            >
+            <q-input v-model="formulario.email" outlined dense type="email" label="Email *" autocomplete="email"
+              autofocus :rules="[requerido('El email'), esEmail()]" lazy-rules>
               <template #prepend>
                 <q-icon name="mail" />
               </template>
             </q-input>
 
-            <q-input
-              v-model="formulario.password"
-              outlined
-              dense
-              label="Contraseña *"
-              autocomplete="current-password"
+            <q-input v-model="formulario.password" outlined dense label="Contraseña *" autocomplete="current-password"
               :type="verPassword ? 'text' : 'password'"
-              :rules="[requerido('La contraseña'), minimo(6, 'La contraseña')]"
-              lazy-rules
-            >
+              :rules="[requerido('La contraseña'), minimo(6, 'La contraseña')]" lazy-rules>
               <template #prepend>
                 <q-icon name="lock" />
               </template>
               <template #append>
-                <q-icon
-                  :name="verPassword ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="verPassword = !verPassword"
-                />
+                <q-icon :name="verPassword ? 'visibility_off' : 'visibility'" class="cursor-pointer"
+                  @click="verPassword = !verPassword" />
               </template>
             </q-input>
           </q-card-section>
 
-          <q-card-actions class="q-px-md q-pb-md">
-            <q-btn
-              unelevated
-              no-caps
-              type="submit"
-              color="primary"
-              class="full-width"
-              label="Entrar"
-              :loading="enviando"
-            />
+          <q-card-actions class="q-px-md q-pb-md column">
+            <q-btn unelevated no-caps type="submit" color="primary" class="full-width" label="Entrar"
+              :loading="enviando" />
+
+            <q-btn flat no-caps icon="arrow_back" label="Volver al catalogo" color="primary" class="full-width q-mt-sm"
+              :to="{ name: 'catalogo' }" />
           </q-card-actions>
         </q-form>
       </q-card>

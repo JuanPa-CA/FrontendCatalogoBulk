@@ -1,16 +1,5 @@
 <script setup>
-/**
- * /views/UsuariosView.vue
- * CRUD de usuarios (solo admin). Campos: email, password (hash bcrypt, nunca se
- * devuelve), rol ("admin" | "user") y activo (para PUT /:id/status).
- *
- * Endpoints:
- *   GET    /usuarios            listar
- *   GET    /usuarios/:id        obtener uno
- *   POST   /usuarios            crear
- *   PUT    /usuarios/:id        editar
- *   PUT    /usuarios/:id/status cambiar estado (activo)
- */
+
 import { computed, onMounted, ref } from "vue";
 
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
@@ -61,7 +50,7 @@ const cargar = async () => {
 
 onMounted(cargar);
 
-// --- Formulario ----------------------------------------------------------
+
 const dialogo = ref(false);
 const guardando = ref(false);
 const usuarioEditando = ref(null);
@@ -89,10 +78,7 @@ const abrirEdicion = (usuario) => {
   dialogo.value = true;
 };
 
-/**
- * En edicion el password es opcional: si queda vacio no se cambia. En creacion
- * si es obligatorio. Por eso se arma la lista de reglas segun el caso.
- */
+
 const reglasPassword = computed(() => {
   if (esEdicion.value) {
     return [(v) => !v || String(v).length >= 6 || "Debe tener al menos 6 caracteres"];
@@ -109,7 +95,7 @@ const guardar = async () => {
       rol: formulario.value.rol,
     };
 
-    // En edicion el password solo se envia si el usuario escribio uno nuevo.
+  
     if (formulario.value.password) {
       datos.password = formulario.value.password;
     }
@@ -128,7 +114,7 @@ const guardar = async () => {
   }
 };
 
-// --- Cambiar estado ------------------------------------------------------
+
 const cambiarEstado = async (usuario) => {
   const activo = usuario.activo !== false;
 

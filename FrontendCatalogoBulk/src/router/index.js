@@ -1,14 +1,4 @@
-/**
- * @fileoverview /router/index.js
- * TODA la configuracion de rutas de la aplicacion, en un solo archivo.
- *
- *   /              -> Login          (unica pantalla publica)
- *   /catalogo      -> AdminLayout    (cualquier usuario autenticado)
- *   /productos     -> AdminLayout    (solo admin)
- *   /proveedores   -> AdminLayout    (solo admin)
- *   /categorias    -> AdminLayout    (solo admin)
- *   /usuarios      -> AdminLayout    (solo admin)
- */
+
 import { createRouter, createWebHashHistory } from "vue-router";
 import { Notify } from "quasar";
 
@@ -27,19 +17,24 @@ import NotFoundView from "@/views/NotFoundView.vue";
 const routes = [
   {
     path: "/",
-    name: "login",
-    component: LoginView,
-    meta: { titulo: "Iniciar sesion", soloInvitados: true },
+    name: "catalogo",
+    component: CatalogoView,
+    meta: { titulo: "Catálogo" },
   },
   {
-    path: "/",
+    path: "/login",
+    name: "login",
+    component: LoginView,
+    meta: { titulo: "Iniciar sesión", soloInvitados: true },
+  },
+  {
+    path: "/admin",
     component: AdminLayout,
+    meta: { requiereAuth: true },
     children: [
       {
-        path: "catalogo",
-        name: "catalogo",
-        component: CatalogoView,
-        meta: { titulo: "Catalogo", requiereAuth: true },
+        path: "",
+        redirect: { name: "productos" },
       },
       {
         path: "productos",
@@ -57,7 +52,7 @@ const routes = [
         path: "categorias",
         name: "categorias",
         component: CategoriasView,
-        meta: { titulo: "Categorias", requiereAuth: true, requiereAdmin: true },
+        meta: { titulo: "Categorías", requiereAuth: true, requiereAdmin: true },
       },
       {
         path: "usuarios",
@@ -65,13 +60,13 @@ const routes = [
         component: UsuariosView,
         meta: { titulo: "Usuarios", requiereAuth: true, requiereAdmin: true },
       },
-      {
-        path: ":pathMatch(.*)*",
-        name: "no-encontrado",
-        component: NotFoundView,
-        meta: { titulo: "Pagina no encontrada" },
-      },
     ],
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "no-encontrado",
+    component: NotFoundView,
+    meta: { titulo: "Página no encontrada" },
   },
 ];
 

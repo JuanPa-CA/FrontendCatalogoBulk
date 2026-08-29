@@ -1,14 +1,4 @@
-/**
- * @fileoverview /utils/formatDate.js
- * Formateo de fechas. El backend guarda con timestamps y devuelve fechas ISO
- * ("2026-08-12T14:30:00.000Z"), que no se le muestran nunca al usuario tal cual.
- */
 
-/**
- * Convierte una fecha ISO en formato dd/mm/aaaa.
- * @param {string|Date} fecha
- * @returns {string} fecha formateada, o "-" si el valor es invalido
- */
 export function formatDate(fecha) {
   if (!fecha) return "-";
 
@@ -22,11 +12,6 @@ export function formatDate(fecha) {
   });
 }
 
-/**
- * Igual que formatDate pero incluyendo la hora.
- * @param {string|Date} fecha
- * @returns {string} "12/08/2026, 09:30 a. m."
- */
 export function formatDateTime(fecha) {
   if (!fecha) return "-";
 

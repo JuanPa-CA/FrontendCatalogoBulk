@@ -1,9 +1,5 @@
 <script setup>
-/**
- * /layouts/AdminLayout.vue
- * Plantilla UNICA de la aplicacion: barra superior + menu lateral + pie.
- * Todas las vistas se pintan en su <router-view>.
- */
+
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -25,12 +21,9 @@ const salir = () => {
   router.push({ name: "login" });
 };
 
-/**
- * Opciones del menu lateral. El catalogo lo ve cualquiera con sesion; el resto
- * de modulos son solo de administrador.
- */
+
 const opcionesMenu = computed(() => {
-  const opciones = [{ name: "catalogo", titulo: "Catalogo", icono: "storefront" }];
+  const opciones = [];
 
   if (auth.esAdmin) {
     opciones.push(

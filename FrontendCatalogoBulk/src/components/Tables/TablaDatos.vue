@@ -1,9 +1,5 @@
 <script setup>
-/**
- * COMPONENTE REUTILIZABLE — /components/Tables/TablaDatos.vue
- * Envoltorio sobre <q-table> con buscador, paginado, estado "cargando" y mensaje
- * cuando no hay datos. Sirve para cualquier listado.
- */
+
 import { computed, ref, useSlots } from "vue";
 
 defineProps({
