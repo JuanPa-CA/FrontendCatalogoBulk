@@ -5,13 +5,13 @@ export const get = async (url) => {
   return data;
 };
 
-export const post = async (url, datos) => {
-  const { data } = await api.post(url, datos);
+export const post = async (url, datos, config = {}) => {
+  const { data } = await api.post(url, datos, config);
   return data;
 };
 
-export const put = async (url, datos = {}) => {
-  const { data } = await api.put(url, datos);
+export const put = async (url, datos = {}, config = {}) => {
+  const { data } = await api.put(url, datos, config);
   return data;
 };
 
