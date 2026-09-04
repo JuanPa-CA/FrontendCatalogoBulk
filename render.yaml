@@ -1,0 +1,21 @@
+# Render Blueprint para el frontend CatálogoBulk (Vite + Vue)
+# Documentación: https://render.com/docs/blueprint-spec
+#
+# IMPORTANTE:
+#  - VITE_API_URL se "quema" en tiempo de build (import.meta.env).
+#  - Reemplaza el valor por la URL real de tu backend luego de desplegarlo.
+#    Debe terminar en /api.
+#  - El router usa createWebHashHistory(), por lo que NO necesita reglas
+#    de rewrite/SPA fallback en hosting estático.
+
+services:
+  - type: web
+    name: frontend-catalogo-bulk
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://catalogobulk-api.onrender.com/api
+      - key: VITE_APP_TITULO
+        value: Catalogo Bulk
