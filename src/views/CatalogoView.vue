@@ -46,10 +46,13 @@ const productosFiltrados = computed(() => {
   const texto = termino.value.trim().toLowerCase();
 
   return productos.value.filter((p) => {
-    const coincideNombre = !texto || String(p.nombre).toLowerCase().includes(texto);
+    const coincideTexto =
+      !texto ||
+      String(p.nombre).toLowerCase().includes(texto) ||
+      String(p.sku).toLowerCase().includes(texto);
     const coincideCategoria = !categoriaFiltro.value || p.categoria === categoriaFiltro.value;
     const coincideProveedor = !proveedorFiltro.value || p.proveedorId === proveedorFiltro.value;
-    return coincideNombre && coincideCategoria && coincideProveedor;
+    return coincideTexto && coincideCategoria && coincideProveedor;
   });
 });
 

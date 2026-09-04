@@ -2,7 +2,7 @@
 
 import { computed, ref, useSlots } from "vue";
 
-defineProps({
+const props = defineProps({
   filas: {
     type: Array,
     required: true,
@@ -23,9 +23,37 @@ defineProps({
     type: String,
     default: "No hay registros para mostrar",
   },
+  // Si se pasa, la busqueda ("Buscar...") solo compara estas columnas (por su
+  // `name`). Si no, filtra por todas las columnas como antes.
+  columnasBusqueda: {
+    type: Array,
+    default: null,
+  },
 });
 
 const busqueda = ref("");
+
+// Si se indican columnasBusqueda, se filtra acá mismo (solo esas columnas) y
+// se le pasa a q-table :filter=null para que no vuelva a filtrar. Si no,
+// q-table filtra por todas con :filter=busqueda.
+const filasFiltradas = computed(() => {
+  if (!props.columnasBusqueda || props.columnasBusqueda.length === 0) {
+    return props.filas;
+  }
+
+  const texto = busqueda.value.trim().toLowerCase();
+  if (!texto) return props.filas;
+
+  return props.filas.filter((fila) =>
+    props.columnasBusqueda.some((nombreCol) => {
+      const col = props.columnas.find((c) => c.name === nombreCol);
+      if (!col) return false;
+      const valor =
+        typeof col.field === "function" ? col.field(fila) : fila[col.field];
+      return String(valor ?? "").toLowerCase().includes(texto);
+    })
+  );
+});
 
 const slotsPropios = ["default", "top", "no-data", "acciones-tabla"];
 
@@ -38,11 +66,11 @@ const slotsReenviados = computed(() =>
 
 <template>
   <q-table
-    :rows="filas"
+    :rows="filasFiltradas"
     :columns="columnas"
     :row-key="filaClave"
     :loading="cargando"
-    :filter="busqueda"
+    :filter="props.columnasBusqueda ? null : busqueda"
     :rows-per-page-options="[10, 25, 50, 0]"
     :no-data-label="mensajeVacio"
     no-results-label="Ningun registro coincide con la busqueda"

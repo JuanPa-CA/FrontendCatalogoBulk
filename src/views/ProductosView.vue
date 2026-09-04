@@ -421,6 +421,7 @@ onBeforeUnmount(() => {
           :filas="productos"
           :columnas="columnas"
           :cargando="cargando"
+          :columnas-busqueda="['sku', 'nombre', 'proveedor', 'categoria']"
           mensaje-vacio="Aun no hay productos registrados"
           class="tabla-productos"
         >
