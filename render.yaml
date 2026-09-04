@@ -16,6 +16,6 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://catalogobulk-api.onrender.com/api
+        value: https://catalagobulk.onrender.com/api
       - key: VITE_APP_TITULO
         value: Catalogo Bulk
