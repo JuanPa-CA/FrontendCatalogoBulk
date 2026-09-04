@@ -116,7 +116,7 @@ const guardar = async () => {
       ? await put(`/proveedores/${proveedorEditando.value._id}`, datos)
       : await post("/proveedores", datos);
 
-    notificarOk(respuesta.msg || "Proveedor guardado");
+    notificarOk(respuesta.message || "Proveedor guardado");
     dialogo.value = false;
     await cargar();
   } catch (e) {
@@ -147,7 +147,7 @@ const cambiarEstado = async (proveedor) => {
       activo: !activo,
     });
 
-    notificarOk(respuesta.msg || "Estado actualizado");
+    notificarOk(respuesta.message || "Estado actualizado");
     await cargar();
   } catch (e) {
     notificarError(e);
@@ -166,7 +166,7 @@ const eliminar = async (proveedor) => {
 
   try {
     const respuesta = await del(`/proveedores/${proveedor._id}`);
-    notificarOk(respuesta.msg || "Proveedor eliminado");
+    notificarOk(respuesta.message || "Proveedor eliminado");
     await cargar();
   } catch (e) {
 

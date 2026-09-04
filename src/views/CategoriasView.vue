@@ -100,7 +100,7 @@ const guardar = async () => {
 
     const respuesta = await put(`/categorias/${categoriaEditando.value._id}`, datos);
 
-    notificarOk(respuesta.msg || "Categoria actualizada");
+    notificarOk(respuesta.message || "Categoria actualizada");
     dialogo.value = false;
     await cargar();
   } catch (e) {

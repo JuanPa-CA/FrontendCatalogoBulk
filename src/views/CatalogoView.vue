@@ -69,7 +69,7 @@ const cargar = async () => {
 
   try {
     const [respProductos, respCategorias, respProveedores] = await Promise.all([
-      get("/productos/public?limit=100&sortBy=createdAt&descending=true"),
+      get("/productos?limit=100"),
       get("/categorias"),
       get("/proveedores?limit=100"),
     ]);
@@ -153,20 +153,12 @@ onBeforeUnmount(() => {
               <q-card flat bordered class="tarjeta-filtros q-pa-md">
                 <div class="row items-center justify-between q-mb-md">
                   <div class="text-subtitle1 text-weight-bold">Filtros</div>
-                  <q-btn
-                    v-if="hayFiltrosActivos"
-                    flat dense size="sm" no-caps icon="filter_alt_off" color="primary"
-                    label="Limpiar"
-                    @click="limpiarFiltros"
-                  />
+                  <q-btn v-if="hayFiltrosActivos" flat dense size="sm" no-caps icon="filter_alt_off" color="primary"
+                    label="Limpiar" @click="limpiarFiltros" />
                 </div>
 
-                <q-input
-                  v-model="termino"
-                  outlined dense clearable label="Buscar por nombre"
-                  debounce="200"
-                  class="q-mb-lg campo-busqueda"
-                >
+                <q-input v-model="termino" outlined dense clearable label="Buscar por nombre" debounce="200"
+                  class="q-mb-lg campo-busqueda">
                   <template #prepend>
                     <q-icon name="search" color="primary" />
                   </template>
@@ -178,22 +170,14 @@ onBeforeUnmount(() => {
                     Categoria
                   </div>
                   <q-list class="q-mt-xs">
-                    <q-item
-                      clickable v-ripple
-                      class="opcion-filtro rounded-borders"
-                      :class="{ 'opcion-filtro--activa': categoriaFiltro === null }"
-                      @click="categoriaFiltro = null"
-                    >
+                    <q-item clickable v-ripple class="opcion-filtro rounded-borders"
+                      :class="{ 'opcion-filtro--activa': categoriaFiltro === null }" @click="categoriaFiltro = null">
                       <q-item-section>Todas</q-item-section>
                     </q-item>
-                    <q-item
-                      v-for="cat in categorias"
-                      :key="cat._id"
-                      clickable v-ripple
+                    <q-item v-for="cat in categorias" :key="cat._id" clickable v-ripple
                       class="opcion-filtro rounded-borders"
                       :class="{ 'opcion-filtro--activa': categoriaFiltro === cat.slug }"
-                      @click="categoriaFiltro = cat.slug"
-                    >
+                      @click="categoriaFiltro = cat.slug">
                       <q-item-section>{{ cat.nombre }}</q-item-section>
                     </q-item>
                   </q-list>
@@ -205,22 +189,14 @@ onBeforeUnmount(() => {
                     Proveedor
                   </div>
                   <q-list class="q-mt-xs">
-                    <q-item
-                      clickable v-ripple
-                      class="opcion-filtro rounded-borders"
-                      :class="{ 'opcion-filtro--activa': proveedorFiltro === null }"
-                      @click="proveedorFiltro = null"
-                    >
+                    <q-item clickable v-ripple class="opcion-filtro rounded-borders"
+                      :class="{ 'opcion-filtro--activa': proveedorFiltro === null }" @click="proveedorFiltro = null">
                       <q-item-section>Todos</q-item-section>
                     </q-item>
-                    <q-item
-                      v-for="prov in proveedores"
-                      :key="prov._id"
-                      clickable v-ripple
+                    <q-item v-for="prov in proveedores" :key="prov._id" clickable v-ripple
                       class="opcion-filtro rounded-borders"
                       :class="{ 'opcion-filtro--activa': proveedorFiltro === prov._id }"
-                      @click="proveedorFiltro = prov._id"
-                    >
+                      @click="proveedorFiltro = prov._id">
                       <q-item-section>{{ prov.nombre }}</q-item-section>
                     </q-item>
                   </q-list>
@@ -247,34 +223,22 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Estado vacio -->
-                <div
-                  v-else-if="productosFiltrados.length === 0"
-                  key="vacio"
-                  class="column flex-center q-py-xl estado-vacio"
-                >
+                <div v-else-if="productosFiltrados.length === 0" key="vacio"
+                  class="column flex-center q-py-xl estado-vacio">
                   <q-icon name="inbox" size="64px" color="grey-4" class="q-mb-sm" />
                   <span class="empty-title">No hay productos que coincidan con los filtros</span>
-                  <q-btn
-                    v-if="hayFiltrosActivos"
-                    flat no-caps color="primary" label="Limpiar filtros" class="q-mt-sm"
-                    @click="limpiarFiltros"
-                  />
+                  <q-btn v-if="hayFiltrosActivos" flat no-caps color="primary" label="Limpiar filtros" class="q-mt-sm"
+                    @click="limpiarFiltros" />
                 </div>
 
                 <!-- Grid real -->
                 <div v-else key="grid" class="row q-col-gutter-md">
-                  <div
-                    v-for="(producto, indice) in productosFiltrados"
-                    :key="producto._id"
+                  <div v-for="(producto, indice) in productosFiltrados" :key="producto._id"
                     class="col-12 col-sm-6 col-lg-4 producto-animado"
-                    :style="{ animationDelay: `${Math.min(indice, 8) * 50}ms` }"
-                  >
+                    :style="{ animationDelay: `${Math.min(indice, 8) * 50}ms` }">
                     <div class="producto-envoltorio">
-                      <ProductoCard
-                        :producto="producto"
-                        :categoria-nombre="categoriaNombre(producto.categoria)"
-                        :proveedor-nombre="proveedorNombre(producto.proveedorId)"
-                      />
+                      <ProductoCard :producto="producto" :categoria-nombre="categoriaNombre(producto.categoria)"
+                        :proveedor-nombre="proveedorNombre(producto.proveedorId)" />
                     </div>
                   </div>
                 </div>
@@ -417,6 +381,7 @@ onBeforeUnmount(() => {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -428,6 +393,7 @@ onBeforeUnmount(() => {
     animation: none;
     opacity: 1;
   }
+
   .producto-envoltorio:hover {
     transform: none;
   }

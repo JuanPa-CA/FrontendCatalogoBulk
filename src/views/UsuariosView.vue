@@ -130,7 +130,7 @@ const guardar = async () => {
       ? await put(`/usuarios/${usuarioEditando.value._id}`, datos)
       : await post("/usuarios", { ...datos, password: formulario.value.password });
 
-    notificarOk(respuesta.msg || "Usuario guardado");
+    notificarOk(respuesta.message || "Usuario guardado");
     dialogo.value = false;
     await cargar();
   } catch (e) {
@@ -154,8 +154,8 @@ const cambiarEstado = async (usuario) => {
   if (!aceptado) return;
 
   try {
-    const respuesta = await put(`/usuarios/${usuario._id}`, { activo: !activo });
-    notificarOk(respuesta.msg || "Estado actualizado");
+    const respuesta = await put(`/usuarios/${usuario._id}/status`, { activo: !activo });
+    notificarOk(respuesta.message || "Estado actualizado");
     await cargar();
   } catch (e) {
     notificarError(e);

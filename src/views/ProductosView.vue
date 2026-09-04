@@ -99,7 +99,7 @@ const cargar = async () => {
 
   try {
     const [respProductos, respCategorias, respProveedores] = await Promise.all([
-      get("/productos?limit=100&sortBy=createdAt&descending=true"),
+      get("/productos?limit=100"),
       get("/categorias"),
       get("/proveedores?limit=100"),
     ]);
@@ -216,7 +216,7 @@ const guardar = async () => {
       ? await put(`/productos/${productoEditando.value._id}`, datos)
       : await post("/productos", datos);
 
-    notificarOk(respuesta.msg || "Producto guardado");
+    notificarOk(respuesta.message || "Producto guardado");
     dialogo.value = false;
     await cargar();
   } catch (e) {
@@ -238,7 +238,7 @@ const eliminar = async (producto) => {
 
   try {
     const respuesta = await del(`/productos/${producto._id}`);
-    notificarOk(respuesta.msg || "Producto eliminado");
+    notificarOk(respuesta.message || "Producto eliminado");
     await cargar();
   } catch (e) {
     notificarError(e);
@@ -277,13 +277,14 @@ const iniciarImportacion = async () => {
 
   importando.value = true;
   try {
+    const archivo = importForm.value.archivo;
+    console.log("Archivo a importar (File):", { nombre: archivo?.name, tamaño: archivo?.size, tipo: archivo?.type });
+
     const formData = new FormData();
-    formData.append("archivo", importForm.value.archivo);
+    formData.append("archivo", archivo);
     formData.append("proveedorId", importForm.value.proveedorId);
 
-    const resp = await post("/imports", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const resp = await post("/imports", formData);
 
     const jobId = resp.importJobId || resp.id;
     importJob.value = {
@@ -317,14 +318,21 @@ const monitorearProgreso = (jobId) => {
         clearInterval(intervaloProgreso);
         intervaloProgreso = null;
         importando.value = false;
-        notificarOk(`Importación completada: ${datos.exitosos} productos procesados con éxito.`);
+        dialogoImport.value = false;
+        notificarOk(
+          datos.message ||
+            `Importación completada: ${datos.exitosos ?? 0} exitosos, ${datos.fallidos ?? 0} fallidos`
+        );
         await cargar();
       } else if (datos.estado === "failed") {
         clearInterval(intervaloProgreso);
         intervaloProgreso = null;
         importando.value = false;
-        notificarError(`La importación falló: ${datos.motivoFallo || "Error en el worker"}`);
-        await cargar();
+        notificarError(
+          datos.motivoFallo
+            ? `La importación falló: ${datos.motivoFallo}`
+            : "La importación falló, no se pudo determinar el motivo"
+        );
       }
     } catch (e) {
       clearInterval(intervaloProgreso);
@@ -350,20 +358,11 @@ onBeforeUnmount(() => {
 <template>
   <q-page>
     <div class="contenedor-app">
-      <EncabezadoPagina
-        titulo="Productos"
-        subtitulo="Gestion del inventario del catalogo"
-        icono="inventory_2"
-      >
+      <EncabezadoPagina titulo="Productos" subtitulo="Gestion del inventario del catalogo" icono="inventory_2">
         <template #acciones>
-          <q-btn
-            outline no-caps color="primary" icon="upload_file" label="Importar CSV" class="q-mr-sm"
-            @click="abrirImportar"
-          />
-          <q-btn
-            unelevated no-caps color="primary" icon="add" label="Nuevo producto"
-            @click="abrirCreacion"
-          />
+          <q-btn outline no-caps color="primary" icon="upload_file" label="Importar CSV" class="q-mr-sm"
+            @click="abrirImportar" />
+          <q-btn unelevated no-caps color="primary" icon="add" label="Nuevo producto" @click="abrirCreacion" />
         </template>
       </EncabezadoPagina>
 
@@ -387,68 +386,39 @@ onBeforeUnmount(() => {
             <q-separator />
 
             <div class="esqueleto-encabezado q-px-md q-py-sm">
-              <span
-                v-for="columna in columnas"
-                :key="columna.name"
-                class="esqueleto-col text-caption text-weight-bold text-grey-7"
-              >
+              <span v-for="columna in columnas" :key="columna.name"
+                class="esqueleto-col text-caption text-weight-bold text-grey-7">
                 {{ columna.label }}
               </span>
             </div>
 
             <q-separator />
 
-            <div
-              v-for="fila in 5"
-              :key="fila"
-              class="esqueleto-fila q-px-md q-py-md"
-            >
-              <q-skeleton
-                v-for="(columna, indice) in columnas"
-                :key="columna.name"
-                type="text"
-                animation="wave"
-                class="esqueleto-col"
-                :width="anchoEsqueleto(indice)"
-              />
+            <div v-for="fila in 5" :key="fila" class="esqueleto-fila q-px-md q-py-md">
+              <q-skeleton v-for="(columna, indice) in columnas" :key="columna.name" type="text" animation="wave"
+                class="esqueleto-col" :width="anchoEsqueleto(indice)" />
             </div>
           </q-card>
         </div>
 
-        <TablaDatos
-          v-else
-          key="tabla"
-          :filas="productos"
-          :columnas="columnas"
-          :cargando="cargando"
-          mensaje-vacio="Aun no hay productos registrados"
-          class="tabla-productos"
-        >
+        <TablaDatos v-else key="tabla" :filas="productos" :columnas="columnas" :cargando="cargando"
+          mensaje-vacio="Aun no hay productos registrados" class="tabla-productos">
           <template #body-cell-disponible="celda">
             <q-td :props="celda" class="text-center">
-              <q-badge
-                class="insignia-disponible"
-                :color="celda.row.disponible ? 'positive' : 'grey-6'"
-                :label="celda.row.disponible ? 'Disponible' : 'Agotado'"
-              />
+              <q-badge class="insignia-disponible" :color="celda.row.disponible ? 'positive' : 'grey-6'"
+                :label="celda.row.disponible ? 'Disponible' : 'Agotado'" />
             </q-td>
           </template>
 
           <template #body-cell-acciones="celda">
             <q-td :props="celda" class="text-right">
-              <q-btn
-                flat round size="md" icon="edit" color="primary"
-                class="action-secondary q-mr-xs"
-                @click="abrirEdicion(celda.row)"
-              >
+              <q-btn flat round size="md" icon="edit" color="primary" class="action-secondary q-mr-xs"
+                @click="abrirEdicion(celda.row)">
                 <q-tooltip>Editar</q-tooltip>
               </q-btn>
 
-              <q-btn
-                flat round size="md" icon="delete" color="negative"
-                class="action-secondary"
-                @click="eliminar(celda.row)"
-              >
+              <q-btn flat round size="md" icon="delete" color="negative" class="action-secondary"
+                @click="eliminar(celda.row)">
                 <q-tooltip>Eliminar</q-tooltip>
               </q-btn>
             </q-td>
@@ -479,21 +449,12 @@ onBeforeUnmount(() => {
               <div class="etiqueta-grupo">Identificacion</div>
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model="formulario.sku"
-                    outlined label="SKU *"
-                    hint="Identificador unico del producto"
-                    :rules="[requerido('El SKU'), minimo(2, 'El SKU')]"
-                    lazy-rules
-                  />
+                  <q-input v-model="formulario.sku" outlined label="SKU *" hint="Identificador unico del producto"
+                    :rules="[requerido('El SKU'), minimo(2, 'El SKU')]" lazy-rules />
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model="formulario.nombre"
-                    outlined label="Nombre *"
-                    :rules="[requerido('El nombre'), minimo(1, 'El nombre')]"
-                    lazy-rules
-                  />
+                  <q-input v-model="formulario.nombre" outlined label="Nombre *"
+                    :rules="[requerido('El nombre'), minimo(1, 'El nombre')]" lazy-rules />
                 </div>
               </div>
             </div>
@@ -502,20 +463,12 @@ onBeforeUnmount(() => {
               <div class="etiqueta-grupo">Precio e inventario</div>
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model.number="formulario.precio"
-                    outlined type="number" label="Precio *" step="0.01"
-                    :rules="[requerido('El precio'), mayorIgualA(0, 'El precio')]"
-                    lazy-rules
-                  />
+                  <q-input v-model.number="formulario.precio" outlined type="number" label="Precio *" step="0.01"
+                    :rules="[requerido('El precio'), mayorIgualA(0, 'El precio')]" lazy-rules />
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model.number="formulario.stock"
-                    outlined type="number" label="Stock *"
-                    :rules="[enteroMayorIgualA(0, 'El stock')]"
-                    lazy-rules
-                  />
+                  <q-input v-model.number="formulario.stock" outlined type="number" label="Stock *"
+                    :rules="[enteroMayorIgualA(0, 'El stock')]" lazy-rules />
                 </div>
               </div>
             </div>
@@ -524,15 +477,10 @@ onBeforeUnmount(() => {
               <div class="etiqueta-grupo">Clasificacion</div>
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-sm-6">
-                  <q-select
-                    v-model="formulario.categoria"
-                    outlined emit-value map-options use-input new-value-mode="add-unique"
-                    label="Categoria *"
-                    :options="opcionesCategorias"
-                    :rules="[seleccionRequerida('una categoria')]"
-                    lazy-rules
-                    hint="Selecciona o escribe una nueva categoría"
-                  >
+                  <q-select v-model="formulario.categoria" outlined emit-value map-options use-input
+                    new-value-mode="add-unique" label="Categoria *" :options="opcionesCategorias"
+                    :rules="[seleccionRequerida('una categoria')]" lazy-rules
+                    hint="Selecciona o escribe una nueva categoría">
                     <template #no-option>
                       <q-item>
                         <q-item-section class="text-grey">
@@ -543,13 +491,8 @@ onBeforeUnmount(() => {
                   </q-select>
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-select
-                    v-model="formulario.proveedorId"
-                    outlined emit-value map-options label="Proveedor *"
-                    :options="opcionesProveedores"
-                    :rules="[seleccionRequerida('un proveedor')]"
-                    lazy-rules
-                  >
+                  <q-select v-model="formulario.proveedorId" outlined emit-value map-options label="Proveedor *"
+                    :options="opcionesProveedores" :rules="[seleccionRequerida('un proveedor')]" lazy-rules>
                     <template #no-option>
                       <q-item>
                         <q-item-section class="text-grey">
@@ -565,31 +508,19 @@ onBeforeUnmount(() => {
             <div>
               <div class="etiqueta-grupo">Informacion adicional</div>
               <div class="q-gutter-y-md">
-                <q-input
-                  v-model="formulario.descripcion"
-                  outlined type="textarea" label="Descripcion"
-                  hint="Opcional"
-                  autogrow
-                />
+                <q-input v-model="formulario.descripcion" outlined type="textarea" label="Descripcion" hint="Opcional"
+                  autogrow />
 
-                <q-input
-                  v-model="formulario.imagenUrl"
-                  outlined label="URL de la imagen"
-                  hint="Opcional. Ej: https://.../producto.jpg"
-                  :rules="[esUrl()]"
-                  lazy-rules
-                />
+                <q-input v-model="formulario.imagenUrl" outlined label="URL de la imagen"
+                  hint="Opcional. Ej: https://.../producto.jpg" :rules="[esUrl()]" lazy-rules />
               </div>
             </div>
           </q-card-section>
 
           <q-card-actions align="right" class="pie-modal">
             <q-btn v-close-popup flat no-caps label="Cancelar" color="dark" class="btn-cancel" />
-            <q-btn
-              unelevated no-caps type="submit" color="primary" class="btn-ok"
-              :label="esEdicion ? 'Guardar cambios' : 'Registrar producto'"
-              :loading="guardando"
-            />
+            <q-btn unelevated no-caps type="submit" color="primary" class="btn-ok"
+              :label="esEdicion ? 'Guardar cambios' : 'Registrar producto'" :loading="guardando" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -616,16 +547,14 @@ onBeforeUnmount(() => {
           <!-- Formulario antes de iniciar -->
           <div v-if="!importJob">
             <div class="q-mb-md text-caption text-grey-8">
-              Sube un archivo <strong>.csv</strong> con columnas: <code>sku,nombre,precio,stock,categoria,descripcion,imagenUrl</code>.
+              Sube un archivo <strong>.csv</strong> con columnas:
+              <code>sku,nombre,precio,stock,categoria,descripcion,imagenUrl</code>.
             </div>
 
             <div class="q-gutter-y-md">
-              <q-select
-                v-model="importForm.proveedorId"
-                outlined emit-value map-options label="Proveedor para la importación *"
-                :options="opcionesProveedores"
-                :rules="[seleccionRequerida('un proveedor')]"
-              >
+              <q-select v-model="importForm.proveedorId" outlined emit-value map-options
+                label="Proveedor para la importación *" :options="opcionesProveedores"
+                :rules="[seleccionRequerida('un proveedor')]">
                 <template #no-option>
                   <q-item>
                     <q-item-section class="text-grey">
@@ -635,13 +564,8 @@ onBeforeUnmount(() => {
                 </template>
               </q-select>
 
-              <q-file
-                v-model="importForm.archivo"
-                outlined
-                label="Seleccionar archivo (.csv, .json) *"
-                accept=".csv, .json"
-                clearable
-              >
+              <q-file v-model="importForm.archivo" outlined label="Seleccionar archivo (.csv, .json) *"
+                accept=".csv, .json" clearable>
                 <template #prepend>
                   <q-icon name="attach_file" color="primary" />
                 </template>
@@ -656,9 +580,7 @@ onBeforeUnmount(() => {
                 Estado:
                 <q-badge
                   :color="importJob.estado === 'completed' ? 'positive' : importJob.estado === 'failed' ? 'negative' : 'warning'"
-                  :label="importJob.estado"
-                  class="q-ml-xs text-uppercase"
-                />
+                  :label="importJob.estado" class="q-ml-xs text-uppercase" />
               </div>
               <div v-if="importJob.total > 0" class="text-caption text-grey-7">
                 {{ importJob.procesados }} / {{ importJob.total }} filas
@@ -667,13 +589,8 @@ onBeforeUnmount(() => {
 
             <q-linear-progress
               :value="(importJob.porcentaje || (importJob.total ? importJob.procesados / importJob.total : 0)) / 100"
-              size="16px"
-              rounded
-              color="primary"
-              track-color="grey-3"
-              stripe
-              :indeterminate="importJob.estado === 'pending' || (importJob.estado === 'processing' && !importJob.total)"
-            >
+              size="16px" rounded color="primary" track-color="grey-3" stripe
+              :indeterminate="importJob.estado === 'pending' || (importJob.estado === 'processing' && !importJob.total)">
               <div class="absolute-full flex flex-center">
                 <q-badge color="white" text-color="primary" :label="`${importJob.porcentaje || 0}%`" />
               </div>
@@ -716,20 +633,11 @@ onBeforeUnmount(() => {
 
         <q-card-actions align="right" class="pie-modal">
           <q-btn flat no-caps label="Cerrar" color="dark" class="btn-cancel" @click="cerrarDialogoImport" />
-          <q-btn
-            v-if="!importJob || (importJob.estado !== 'completed' && importJob.estado !== 'failed' && !importando)"
-            unelevated no-caps color="primary" class="btn-ok"
-            label="Comenzar importación"
-            :loading="importando"
-            :disable="!importForm.archivo || !importForm.proveedorId"
-            @click="iniciarImportacion"
-          />
-          <q-btn
-            v-else-if="importJob.estado === 'completed' || importJob.estado === 'failed'"
-            unelevated no-caps color="primary" class="btn-ok"
-            label="Listo"
-            @click="cerrarDialogoImport"
-          />
+          <q-btn v-if="!importJob || (importJob.estado !== 'completed' && importJob.estado !== 'failed' && !importando)"
+            unelevated no-caps color="primary" class="btn-ok" label="Comenzar importación" :loading="importando"
+            :disable="!importForm.archivo || !importForm.proveedorId" @click="iniciarImportacion" />
+          <q-btn v-else-if="importJob.estado === 'completed' || importJob.estado === 'failed'" unelevated no-caps
+            color="primary" class="btn-ok" label="Listo" @click="cerrarDialogoImport" />
         </q-card-actions>
       </q-card>
     </q-dialog>
