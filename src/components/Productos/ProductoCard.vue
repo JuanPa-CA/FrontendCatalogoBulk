@@ -72,7 +72,7 @@ const estaDisponible = computed(() => Boolean(props.producto.disponible));
   }
 
   &__placeholder {
-    aspect-ratio: 8/2;
+    aspect-ratio: 8/9;
     display: flex;
     align-items: center;
     justify-content: center;
