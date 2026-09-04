@@ -28,7 +28,7 @@ const estaDisponible = computed(() => Boolean(props.producto.disponible));
         v-if="producto.imagenUrl"
         :src="producto.imagenUrl"
         :alt="producto.nombre"
-        :ratio="4/3"
+        :ratio="8/9"
         class="full-width imagen-zoom"
       />
       <div v-else class="producto-card__placeholder">
@@ -72,7 +72,7 @@ const estaDisponible = computed(() => Boolean(props.producto.disponible));
   }
 
   &__placeholder {
-    aspect-ratio: 4/3;
+    aspect-ratio: 8/2;
     display: flex;
     align-items: center;
     justify-content: center;

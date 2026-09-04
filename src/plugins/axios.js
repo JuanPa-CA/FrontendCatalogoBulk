@@ -5,7 +5,7 @@ import { router } from "@/router";
 import { useAuthStore } from "@/store/Auth";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
   headers: { "Content-Type": "application/json" },
   timeout: 10000,
 });
@@ -27,7 +27,11 @@ api.interceptors.response.use(
 
     const errorNormalizado = {
       status: error.response?.status ?? 0,
-      mensaje: data?.msg || data?.message || mensajeSegunFallo(error),
+      mensaje:
+        data?.error?.mensaje ||
+        data?.msg ||
+        data?.message ||
+        mensajeSegunFallo(error),
       errores: Array.isArray(data?.errors) ? data.errors : [],
     };
 

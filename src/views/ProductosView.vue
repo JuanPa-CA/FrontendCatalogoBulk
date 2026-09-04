@@ -99,9 +99,9 @@ const cargar = async () => {
 
   try {
     const [respProductos, respCategorias, respProveedores] = await Promise.all([
-      get("/productos?limit=1000"),
+      get("/productos?limit=100&sortBy=createdAt&descending=true"),
       get("/categorias"),
-      get("/proveedores?limit=1000"),
+      get("/proveedores?limit=100"),
     ]);
 
     productos.value = extraerLista(respProductos);
@@ -244,6 +244,107 @@ const eliminar = async (producto) => {
     notificarError(e);
   }
 };
+
+// ---- Carga masiva (Bulk Import) -------------------------------------------
+const dialogoImport = ref(false);
+const importando = ref(false);
+const formularioImportRef = ref(null);
+const importForm = ref({
+  proveedorId: null,
+  archivo: null,
+});
+const importJob = ref(null);
+let intervaloProgreso = null;
+
+const abrirImportar = () => {
+  importForm.value = {
+    proveedorId: proveedores.value[0]?._id || null,
+    archivo: null,
+  };
+  importJob.value = null;
+  dialogoImport.value = true;
+};
+
+const iniciarImportacion = async () => {
+  if (!importForm.value.archivo) {
+    notificarError("Por favor selecciona un archivo CSV o JSON.");
+    return;
+  }
+  if (!importForm.value.proveedorId) {
+    notificarError("Por favor selecciona un proveedor.");
+    return;
+  }
+
+  importando.value = true;
+  try {
+    const formData = new FormData();
+    formData.append("archivo", importForm.value.archivo);
+    formData.append("proveedorId", importForm.value.proveedorId);
+
+    const resp = await post("/imports", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    const jobId = resp.importJobId || resp.id;
+    importJob.value = {
+      importJobId: jobId,
+      estado: resp.estado || "pending",
+      total: 0,
+      procesados: 0,
+      exitosos: 0,
+      fallidos: 0,
+      porcentaje: 0,
+      errores: [],
+    };
+
+    notificarOk("Importación encolada. Procesando en segundo plano...");
+    monitorearProgreso(jobId);
+  } catch (e) {
+    notificarError(e);
+    importando.value = false;
+  }
+};
+
+const monitorearProgreso = (jobId) => {
+  if (intervaloProgreso) clearInterval(intervaloProgreso);
+
+  intervaloProgreso = setInterval(async () => {
+    try {
+      const datos = await get(`/imports/${jobId}`);
+      importJob.value = datos;
+
+      if (datos.estado === "completed") {
+        clearInterval(intervaloProgreso);
+        intervaloProgreso = null;
+        importando.value = false;
+        notificarOk(`Importación completada: ${datos.exitosos} productos procesados con éxito.`);
+        await cargar();
+      } else if (datos.estado === "failed") {
+        clearInterval(intervaloProgreso);
+        intervaloProgreso = null;
+        importando.value = false;
+        notificarError(`La importación falló: ${datos.motivoFallo || "Error en el worker"}`);
+        await cargar();
+      }
+    } catch (e) {
+      clearInterval(intervaloProgreso);
+      intervaloProgreso = null;
+      importando.value = false;
+    }
+  }, 1500);
+};
+
+const cerrarDialogoImport = () => {
+  if (intervaloProgreso) {
+    clearInterval(intervaloProgreso);
+    intervaloProgreso = null;
+  }
+  dialogoImport.value = false;
+};
+
+onBeforeUnmount(() => {
+  if (intervaloProgreso) clearInterval(intervaloProgreso);
+});
 </script>
 
 <template>
@@ -255,6 +356,10 @@ const eliminar = async (producto) => {
         icono="inventory_2"
       >
         <template #acciones>
+          <q-btn
+            outline no-caps color="primary" icon="upload_file" label="Importar CSV" class="q-mr-sm"
+            @click="abrirImportar"
+          />
           <q-btn
             unelevated no-caps color="primary" icon="add" label="Nuevo producto"
             @click="abrirCreacion"
@@ -421,15 +526,17 @@ const eliminar = async (producto) => {
                 <div class="col-12 col-sm-6">
                   <q-select
                     v-model="formulario.categoria"
-                    outlined emit-value map-options label="Categoria *"
+                    outlined emit-value map-options use-input new-value-mode="add-unique"
+                    label="Categoria *"
                     :options="opcionesCategorias"
                     :rules="[seleccionRequerida('una categoria')]"
                     lazy-rules
+                    hint="Selecciona o escribe una nueva categoría"
                   >
                     <template #no-option>
                       <q-item>
                         <q-item-section class="text-grey">
-                          No hay categorias disponibles
+                          Escribe el nombre de la categoría y presiona Enter
                         </q-item-section>
                       </q-item>
                     </template>
@@ -485,6 +592,145 @@ const eliminar = async (producto) => {
             />
           </q-card-actions>
         </q-form>
+      </q-card>
+    </q-dialog>
+
+    <!-- Modal de Importación Masiva (CSV / JSON) -->
+    <q-dialog v-model="dialogoImport" persistent>
+      <q-card class="dialog-card modal-producto" style="max-width: 540px; width: 100%;">
+        <q-card-section class="cabecera-modal row items-center no-wrap">
+          <div class="icono-cabecera">
+            <q-icon name="upload_file" size="22px" />
+          </div>
+
+          <div class="q-ml-md">
+            <div class="dialog-title">Carga masiva de productos</div>
+            <div class="text-caption texto-cabecera">Importar catálogo vía CSV o JSON</div>
+          </div>
+
+          <q-space />
+          <q-btn flat round dense icon="close" color="white" class="boton-cerrar" @click="cerrarDialogoImport" />
+        </q-card-section>
+
+        <q-card-section class="cuerpo-modal q-gutter-y-md">
+          <!-- Formulario antes de iniciar -->
+          <div v-if="!importJob">
+            <div class="q-mb-md text-caption text-grey-8">
+              Sube un archivo <strong>.csv</strong> con columnas: <code>sku,nombre,precio,stock,categoria,descripcion,imagenUrl</code>.
+            </div>
+
+            <div class="q-gutter-y-md">
+              <q-select
+                v-model="importForm.proveedorId"
+                outlined emit-value map-options label="Proveedor para la importación *"
+                :options="opcionesProveedores"
+                :rules="[seleccionRequerida('un proveedor')]"
+              >
+                <template #no-option>
+                  <q-item>
+                    <q-item-section class="text-grey">
+                      Debes registrar al menos un proveedor primero
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+
+              <q-file
+                v-model="importForm.archivo"
+                outlined
+                label="Seleccionar archivo (.csv, .json) *"
+                accept=".csv, .json"
+                clearable
+              >
+                <template #prepend>
+                  <q-icon name="attach_file" color="primary" />
+                </template>
+              </q-file>
+            </div>
+          </div>
+
+          <!-- Monitor de Progreso en Vivo -->
+          <div v-else class="q-gutter-y-md">
+            <div class="row items-center justify-between">
+              <div class="text-subtitle2 text-weight-bold">
+                Estado:
+                <q-badge
+                  :color="importJob.estado === 'completed' ? 'positive' : importJob.estado === 'failed' ? 'negative' : 'warning'"
+                  :label="importJob.estado"
+                  class="q-ml-xs text-uppercase"
+                />
+              </div>
+              <div v-if="importJob.total > 0" class="text-caption text-grey-7">
+                {{ importJob.procesados }} / {{ importJob.total }} filas
+              </div>
+            </div>
+
+            <q-linear-progress
+              :value="(importJob.porcentaje || (importJob.total ? importJob.procesados / importJob.total : 0)) / 100"
+              size="16px"
+              rounded
+              color="primary"
+              track-color="grey-3"
+              stripe
+              :indeterminate="importJob.estado === 'pending' || (importJob.estado === 'processing' && !importJob.total)"
+            >
+              <div class="absolute-full flex flex-center">
+                <q-badge color="white" text-color="primary" :label="`${importJob.porcentaje || 0}%`" />
+              </div>
+            </q-linear-progress>
+
+            <div class="row q-col-gutter-sm text-center q-pt-sm">
+              <div class="col-4">
+                <q-card flat bordered class="q-pa-sm bg-grey-1">
+                  <div class="text-caption text-grey-7">Procesados</div>
+                  <div class="text-h6 text-weight-bold">{{ importJob.procesados || 0 }}</div>
+                </q-card>
+              </div>
+              <div class="col-4">
+                <q-card flat bordered class="q-pa-sm bg-green-1 text-positive">
+                  <div class="text-caption">Exitosos</div>
+                  <div class="text-h6 text-weight-bold">{{ importJob.exitosos || 0 }}</div>
+                </q-card>
+              </div>
+              <div class="col-4">
+                <q-card flat bordered class="q-pa-sm bg-red-1 text-negative">
+                  <div class="text-caption">Fallidos</div>
+                  <div class="text-h6 text-weight-bold">{{ importJob.fallidos || 0 }}</div>
+                </q-card>
+              </div>
+            </div>
+
+            <!-- Lista de errores si existen -->
+            <div v-if="importJob.errores && importJob.errores.length > 0" class="q-mt-sm">
+              <div class="text-caption text-weight-bold text-negative q-mb-xs">
+                Detalle de errores ({{ importJob.errores.length }}):
+              </div>
+              <q-scroll-area style="height: 120px; border: 1px solid #ffcdd2; border-radius: 8px; padding: 6px;">
+                <div v-for="(err, idx) in importJob.errores" :key="idx" class="text-caption text-grey-9 q-py-xs">
+                  • <strong>Fila {{ err.fila }}</strong> <span v-if="err.sku">({{ err.sku }})</span>: {{ err.motivo }}
+                </div>
+              </q-scroll-area>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="pie-modal">
+          <q-btn flat no-caps label="Cerrar" color="dark" class="btn-cancel" @click="cerrarDialogoImport" />
+          <q-btn
+            v-if="!importJob || (importJob.estado !== 'completed' && importJob.estado !== 'failed' && !importando)"
+            unelevated no-caps color="primary" class="btn-ok"
+            label="Comenzar importación"
+            :loading="importando"
+            :disable="!importForm.archivo || !importForm.proveedorId"
+            @click="iniciarImportacion"
+          />
+          <q-btn
+            v-else-if="importJob.estado === 'completed' || importJob.estado === 'failed'"
+            unelevated no-caps color="primary" class="btn-ok"
+            label="Listo"
+            @click="cerrarDialogoImport"
+          />
+        </q-card-actions>
       </q-card>
     </q-dialog>
   </q-page>

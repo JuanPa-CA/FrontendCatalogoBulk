@@ -69,9 +69,9 @@ const cargar = async () => {
 
   try {
     const [respProductos, respCategorias, respProveedores] = await Promise.all([
-      get("/productos?limit=1000"),
+      get("/productos/public?limit=100&sortBy=createdAt&descending=true"),
       get("/categorias"),
-      get("/proveedores?limit=1000"),
+      get("/proveedores?limit=100"),
     ]);
 
     productos.value = extraerLista(respProductos);

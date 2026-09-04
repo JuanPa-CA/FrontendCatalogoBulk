@@ -154,7 +154,7 @@ const cambiarEstado = async (usuario) => {
   if (!aceptado) return;
 
   try {
-    const respuesta = await put(`/usuarios/${usuario._id}/status`, { activo: !activo });
+    const respuesta = await put(`/usuarios/${usuario._id}`, { activo: !activo });
     notificarOk(respuesta.msg || "Estado actualizado");
     await cargar();
   } catch (e) {
