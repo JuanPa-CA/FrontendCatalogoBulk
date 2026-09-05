@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/Auth";
 import { useGeneralStore } from "@/store/General";
 import { useNotificar } from "@/composables/useNotificar";
 import { requerido, esEmail, minimo } from "@/utils/reglas";
-import logo from "@/assets/logo.svg";
+import logo from "@/assets/cubo.png";
 
 const router = useRouter();
 const auth = useAuthStore();

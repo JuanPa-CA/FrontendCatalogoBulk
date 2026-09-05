@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import EncabezadoPagina from "@/components/Encabezados/EncabezadoPagina.vue";
 import TablaDatos from "@/components/Tables/TablaDatos.vue";
 
-import { get, post, put, del } from "@/services/api.service";
+import { get, post, put } from "@/services/api.service";
 import { extraerLista } from "@/utils/normalizar";
 import { useGeneralStore } from "@/store/General";
 import { useNotificar } from "@/composables/useNotificar";
@@ -154,25 +154,6 @@ const cambiarEstado = async (proveedor) => {
   }
 };
 
-const eliminar = async (proveedor) => {
-  const aceptado = await confirmar({
-    titulo: "Eliminar proveedor",
-    mensaje: `¿Confirmas eliminar a ${proveedor.nombre}? Esta accion no se puede deshacer.`,
-    textoOk: "Eliminar",
-    color: "negative",
-  });
-
-  if (!aceptado) return;
-
-  try {
-    const respuesta = await del(`/proveedores/${proveedor._id}`);
-    notificarOk(respuesta.msg || "Proveedor eliminado");
-    await cargar();
-  } catch (e) {
-
-    notificarError(e);
-  }
-};
 </script>
 
 <template>
@@ -296,13 +277,6 @@ const eliminar = async (proveedor) => {
                 </q-tooltip>
               </q-btn>
 
-              <q-btn
-                flat round size="md" icon="delete" color="negative"
-                class="action-secondary"
-                @click="eliminar(celda.row)"
-              >
-                <q-tooltip>Eliminar</q-tooltip>
-              </q-btn>
             </q-td>
           </template>
         </TablaDatos>
